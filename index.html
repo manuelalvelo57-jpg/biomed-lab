@@ -1,0 +1,1181 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#0f3460">
+<title>Biomed Lab</title>
+<link rel="manifest" href="manifest.json">
+<script src="https://cdn.jsdelivr.net/npm/dexie@3.2.4/dist/dexie.min.js"></script>
+<style>
+  .btn-whatsapp { background: #25d366; color: white; }
+  .btn-whatsapp:hover { background: #128c7e; }
+  *{box-sizing:border-box;font-family:'Segoe UI',system-ui,sans-serif}
+  body{background:#f1f5f9;margin:0;padding:16px}
+  .container{max-width:1000px;margin:0 auto}
+  header{background:linear-gradient(135deg,#0f3460 0%,#16213e 100%);color:white;padding:24px;border-radius:16px;text-align:center;margin-bottom:20px}
+  header h1{margin:0;font-size:26px}
+  header p{margin:6px 0 0;opacity:.85;font-size:14px}
+  .card{background:white;padding:20px;border-radius:12px;margin-bottom:16px;box-shadow:0 1px 3px rgba(0,0,0,.08)}
+  h2{margin-top:0;color:#0f3460;font-size:18px}
+  h3{color:#1e3a5f;font-size:15px;margin-bottom:10px}
+  input,select,textarea{width:100%;padding:10px 12px;margin:6px 0 12px;border:1px solid #cbd5e1;border-radius:8px;font-size:14px}
+  input:focus,select:focus{outline:none;border-color:#0f3460;box-shadow:0 0 0 3px rgba(15,52,96,.1)}
+  button{padding:10px 18px;border:none;border-radius:8px;cursor:pointer;font-size:14px;font-weight:600;transition:all .2s}
+  button:hover{transform:translateY(-1px)}
+  .btn-primary{background:#0f3460;color:white}
+  .btn-success{background:#10b981;color:white}
+  .btn-warning{background:#f59e0b;color:white}
+  .btn-danger{background:#ef4444;color:white}
+  .btn-info{background:#3b82f6;color:white}
+  .btn-outline{background:white;color:#0f3460;border:1px solid #0f3460}
+  .btn-sm{padding:6px 12px;font-size:12px}
+  .hidden{display:none!important}
+  .patient-found{background:#ecfdf5;border:1px solid #10b981;padding:14px;border-radius:10px;margin-bottom:14px}
+  .search-result{cursor:pointer;padding:12px 14px;border-radius:8px;margin:4px 0;border:1px solid #e2e8f0;background:#f8fafc;transition:all .2s}
+  .search-result:hover{background:#e0f2fe;border-color:#0f3460}
+  table{width:100%;border-collapse:collapse;margin-top:12px;font-size:13px}
+  th,td{padding:10px;text-align:left;border-bottom:1px solid #e2e8f0}
+  th{background:#f8fafc;color:#475569;font-size:11px;text-transform:uppercase;letter-spacing:.5px}
+  tr:hover{background:#f8fafc}
+  .param-row{display:flex;gap:10px;margin-bottom:8px;align-items:center;flex-wrap:wrap}
+  .param-row label{width:180px;font-size:13px;color:#334155}
+  .param-row input{flex:1;min-width:100px;margin:0}
+  .param-row .ref{color:#64748b;font-size:12px;width:140px}
+  .badge{display:inline-block;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600}
+  .badge-green{background:#d1fae5;color:#065f46}
+  .badge-blue{background:#dbeafe;color:#1e40af}
+  .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+  .grid-4{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:12px}
+  @media(max-width:600px){.grid-2,.grid-3,.grid-4{grid-template-columns:1fr}}
+  .tabs{display:flex;gap:4px;margin-bottom:16px;border-bottom:2px solid #e2e8f0;padding-bottom:2px;overflow-x:auto}
+  .tab{padding:10px 18px;cursor:pointer;border-radius:8px 8px 0 0;font-size:13px;font-weight:600;color:#64748b;border:none;background:none;white-space:nowrap}
+  .tab.active{color:#0f3460;border-bottom:3px solid #0f3460;background:#f1f5f9}
+  .tab-content{display:none}
+  .tab-content.active{display:block}
+  .config-exam-item{display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:#f8fafc;border-radius:8px;margin-bottom:6px;font-size:13px}
+  .config-exam-item button{padding:4px 10px;font-size:11px}
+  .section-title{font-size:13px;font-weight:700;color:#475569;text-transform:uppercase;letter-spacing:1px;margin:20px 0 10px}
+  .orden-box{background:#f0f9ff;border:2px dashed #0ea5e9;padding:14px;border-radius:10px;text-align:center;margin-bottom:16px}
+  .orden-box .codigo{font-size:28px;font-weight:800;color:#0f3460;letter-spacing:2px;font-family:monospace}
+  .orden-box label{font-size:12px;color:#64748b;text-transform:uppercase}
+  .file-input-wrapper{position:relative;overflow:hidden;display:inline-block}
+  .file-input-wrapper input[type=file]{position:absolute;left:-9999px}
+  .modal-overlay{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.5);display:none;align-items:center;justify-content:center;z-index:1000}
+  .modal-overlay.active{display:flex}
+  .modal{background:white;padding:24px;border-radius:16px;max-width:600px;width:90%;max-height:80vh;overflow-y:auto}
+  .modal h3{margin-top:0}
+  .close-modal{float:right;font-size:24px;cursor:pointer;color:#94a3b8;line-height:1}
+  .close-modal:hover{color:#0f3460}
+  .np-row{display:flex;gap:8px;margin-bottom:6px}
+  .np-row input{flex:1;margin:0}
+  .np-row button{padding:4px 10px;font-size:11px;background:#fee2e2;color:#991b1b}
+  .stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:16px}
+  .stat-card{background:#f8fafc;padding:16px;border-radius:10px;text-align:center}
+  .stat-card .number{font-size:28px;font-weight:800;color:#0f3460}
+  .stat-card .label{font-size:12px;color:#64748b;margin-top:4px}
+  .resultado-select{width:auto;min-width:120px}
+
+  /* ESTILOS DE IMPRESIÓN COMPACTOS Y BLANCO/NEGRO */
+  .report-container { width: 100%; background: #fff; color: #000; font-size: 11px; line-height: 1.2; }
+  .report-header { text-align: center; border-bottom: 2px solid #000; padding-bottom: 4px; margin-bottom: 8px; background: transparent; }
+  .report-header h2 { margin: 0; color: #000; font-size: 18px; font-weight: bold; text-transform: uppercase; }
+  .report-header p { margin: 1px 0; color: #000; font-size: 10px; }
+  .report-info { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 11px; flex-wrap: wrap; border-bottom: 1px solid #ccc; padding-bottom: 4px; }
+  .report-info p { margin: 2px 0; }
+  .report-table { width: 100%; border-collapse: collapse; margin-top: 4px; margin-bottom: 8px; }
+  .report-table th, .report-table td { padding: 4px 6px; border-bottom: 1px solid #ddd; font-size: 11px; text-align: left; }
+  .report-table th { background: #fff; color: #000; border-bottom: 2px solid #000; font-size: 10px; text-transform: uppercase; }
+  .report-obs { font-size: 10px; border: 1px solid #000; padding: 4px; border-radius: 4px; margin-top: 6px; }
+  .out-of-range { font-weight: bold; text-decoration: underline; }
+
+  @media print {
+    .no-print { display: none !important; }
+    body { background: white; padding: 0; margin: 0; }
+    .card { box-shadow: none; border: none; padding: 0; margin: 0; }
+    header { display: none !important; }
+    @page { margin: 1cm; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+<header class="no-print"><h1>🧬 Biomed Lab</h1><p>Sistema de Gestión de Resultados</p></header>
+
+<div class="tabs no-print">
+  <button class="tab active" onclick="showTab(event, 'registro')">📝 Registro</button>
+  <button class="tab" onclick="showTab(event, 'historial')">📋 Historial</button>
+  <button class="tab" onclick="showTab(event, 'config')">⚙️ Configuración</button>
+  <button class="tab" onclick="showTab(event, 'respaldo')">💾 Respaldo</button>
+</div>
+
+<div id="tab-registro" class="tab-content active">
+  <div class="card no-print">
+    <h2>🔍 Paso 1: Buscar Paciente</h2>
+    <input type="text" id="buscarCedula" placeholder="Escribe cédula o nombre..." oninput="buscarPaciente()">
+    <div id="resultadosBusqueda"></div>
+    <div id="pacienteEncontrado" class="patient-found hidden"></div>
+    <button class="btn-outline" onclick="toggleRegistro()">+ Registrar paciente nuevo</button>
+  </div>
+
+  <div class="card hidden no-print" id="registroPaciente">
+    <h2>📝 Registrar Paciente Nuevo</h2>
+    <div class="grid-2">
+      <input type="text" id="cedula" placeholder="Cédula / ID *">
+      <input type="text" id="nombre" placeholder="Nombre completo *">
+    </div>
+    <div class="grid-4">
+      <input type="number" id="edad" placeholder="Edad (años)" min="0" max="120" oninput="actualizarFechaPorEdad()">
+      <input type="date" id="fechaNac" onchange="actualizarEdadPorFecha()">
+      <select id="sexo"><option value="">Sexo</option><option value="F">Femenino</option><option value="M">Masculino</option></select>
+      <input type="text" id="telefono" placeholder="Teléfono">
+    </div>
+    <input type="text" id="direccion" placeholder="Dirección (opcional)">
+    <button class="btn-success" onclick="guardarPaciente()">💾 Guardar Paciente</button>
+  </div>
+
+  <div class="card hidden no-print" id="entradaResultados">
+    <h2>🧪 Paso 2: Entrada de Resultados</h2>
+    <p id="pacienteSeleccionado" style="font-weight:700;color:#0f3460;font-size:15px;margin-bottom:12px"></p>
+    <div class="orden-box">
+      <label>Código de Servicio / Orden</label>
+      <div class="codigo" id="codigoServicio"></div>
+      <small style="color:#64748b">Generado automáticamente</small>
+    </div>
+    <div class="grid-2">
+      <select id="tipoExamen" onchange="cargarParametros()"><option value="">Selecciona tipo de examen</option></select>
+      <div>
+        <input type="text" id="bioanalista" placeholder="Nombre del Bioanalista">
+        <small style="color:#64748b;font-size:11px">Puedes fijar este valor por defecto en la pestaña ⚙️ Configuración.</small>
+      </div>
+    </div>
+    <div id="parametrosExamen"></div>
+    <textarea id="observaciones" rows="2" placeholder="Observaciones (opcional)"></textarea>
+    <button class="btn-success" onclick="guardarExamen()">✅ Guardar Resultados</button>
+  </div>
+
+  <div class="card hidden" id="informeImpresion">
+    <h2 class="no-print">📄 Informe de Laboratorio</h2>
+    <div id="contenidoInforme"></div>
+    <div class="no-print" style="margin-top:16px;display:flex;gap:10px;flex-wrap:wrap">
+      <button class="btn-warning" onclick="window.print()">🖨️ Imprimir / Guardar PDF</button>
+      <button class="btn-whatsapp" onclick="enviarWhatsAppActual()">📲 Enviar por WhatsApp</button>
+      <button class="btn-info" onclick="copiarResumenTexto()">📋 Copiar Resumen</button>
+      <button class="btn-outline" onclick="nuevoExamen()">+ Nuevo Examen</button>
+    </div>
+  </div>
+</div>
+
+<div id="tab-historial" class="tab-content">
+  <div class="card no-print">
+    <h2>📋 Historial de Exámenes</h2>
+    <div class="grid-2">
+      <input type="text" id="filtroPaciente" placeholder="Filtrar por paciente..." oninput="cargarHistorial()">
+      <select id="filtroExamen" onchange="cargarHistorial()"><option value="">Todos los exámenes</option></select>
+    </div>
+    <div class="stats-grid" id="statsGrid"></div>
+    <table>
+      <thead><tr><th>Código</th><th>Paciente</th><th>Examen</th><th>Fecha</th><th>Bioanalista</th><th>Acción</th></tr></thead>
+      <tbody id="tablaHistorial"></tbody>
+    </table>
+  </div>
+</div>
+
+<div id="tab-config" class="tab-content">
+  <div class="card no-print">
+    <h2>⚙️ Configuración de Exámenes</h2>
+    <p style="color:#64748b;font-size:13px">Agrega nuevos exámenes a medida que Biomed crece.</p>
+    <div class="section-title">Agregar nuevo examen</div>
+    <input type="text" id="nuevoExamenNombre" placeholder="Nombre del examen">
+    <div id="nuevosParametros">
+      <div class="np-row">
+        <input type="text" placeholder="Parámetro" class="np-nombre">
+        <input type="text" placeholder="Unidad" class="np-unidad">
+        <input type="text" placeholder="Referencia" class="np-ref">
+      </div>
+    </div>
+    <button class="btn-outline btn-sm" onclick="agregarFilaParametro()">+ Agregar parámetro</button>
+    <br><br>
+    <button class="btn-success" onclick="guardarNuevoExamen()">💾 Guardar nuevo examen</button>
+    <div class="section-title">Exámenes configurados (<span id="totalExamenes">0</span>)</div>
+    <div id="listaExamenesConfig"></div>
+  </div>
+  <div class="card no-print">
+    <h2>🏥 Datos del Laboratorio y Personal</h2>
+    <div class="grid-2">
+      <input type="text" id="labNombre" placeholder="Nombre del laboratorio">
+      <input type="text" id="labBioanalista" placeholder="Bioanalista por defecto (Fijar nombre)">
+    </div>
+    <div class="grid-2">
+      <input type="text" id="labDireccion" placeholder="Dirección">
+      <input type="text" id="labTelefono" placeholder="Teléfono">
+    </div>
+    <div class="grid-2">
+      <input type="text" id="labRif" placeholder="RIF / NIT">
+      <div>
+        <label style="font-size:12px;color:#64748b">Firma / Sello Digitalizado (Imagen)</label>
+        <input type="file" id="labFirmaInput" accept="image/*" onchange="cargarImagenFirma(this)">
+      </div>
+    </div>
+    <div id="firmaPreview" style="margin-top:8px"></div>
+    <button class="btn-primary" onclick="guardarConfigLab()">💾 Guardar Configuración</button>
+  </div>
+</div>
+
+<div id="tab-respaldo" class="tab-content">
+  <div class="card no-print">
+    <h2>💾 Exportar Base de Datos</h2>
+    <p style="color:#64748b;font-size:13px">Genera un archivo JSON con todos los datos. Guárdalo en USB o nube.</p>
+    <button class="btn-info" onclick="exportarDB()">📤 Exportar todo (JSON)</button>
+    <div id="exportMsg" style="margin-top:10px"></div>
+  </div>
+  <div class="card no-print">
+    <h2>📥 Importar Base de Datos</h2>
+    <p style="color:#64748b;font-size:13px">Restaura datos desde un archivo de respaldo. <strong style="color:#ef4444">¡Reemplazará los datos actuales!</strong></p>
+    <div class="file-input-wrapper">
+      <button class="btn-warning">📁 Seleccionar archivo JSON</button>
+      <input type="file" id="importFile" accept=".json" onchange="importarDB(this)">
+    </div>
+    <div id="importMsg" style="margin-top:10px"></div>
+  </div>
+  <div class="card no-print">
+    <h2>🗑️ Limpiar Datos</h2>
+    <p style="color:#64748b;font-size:13px">Elimina todos los datos. <strong style="color:#ef4444">¡No se puede deshacer!</strong></p>
+    <button class="btn-danger" onclick="limpiarDB()">⚠️ Borrar TODA la base de datos</button>
+  </div>
+</div>
+</div>
+
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal">
+    <span class="close-modal" onclick="cerrarModal()">&times;</span>
+    <h3>📄 Informe de Laboratorio</h3>
+    <div id="modalContent"></div>
+    <div style="margin-top:16px;text-align:right">
+      <button class="btn-warning" onclick="window.print()">🖨️ Imprimir</button>
+      <button class="btn-outline" onclick="cerrarModal()">Cerrar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+if('serviceWorker' in navigator){
+  window.addEventListener('load',()=>{
+    navigator.serviceWorker.register('service-worker.js')
+      .then(r=>console.log('SW ok:',r.scope))
+      .catch(e=>console.log('SW error:',e));
+  });
+}
+
+async function solicitarAlmacenamientoPersistente() {
+  if (navigator.storage && navigator.storage.persist) {
+    const isPersisted = await navigator.storage.persisted();
+    if (!isPersisted) {
+      await navigator.storage.persist();
+    }
+  }
+}
+
+const db=new Dexie('BiomedLabDB');
+db.version(1).stores({
+  pacientes:'++id,cedula,nombre',
+  examenes:'++id,paciente_id,tipo_examen,fecha,codigo_servicio',
+  resultados:'++id,examen_id,parametro',
+  config:'clave'
+});
+
+let pacienteActualId=null;
+let examenActualId=null;
+let examenesConfig={};
+let labConfig={};
+let firmaBase64 = '';
+
+const examenesDefault={
+  hematologia:{
+    nombre:'Hematología',
+    parametros:[
+      {param:'Hemoglobina',unidad:'g/dL',ref:'H:14.0-18.0 / M:12.0-16.0'},
+      {param:'Hematocrito',unidad:'%',ref:'H:42-52 / M:36-46'},
+      {param:'Leucocitos',unidad:'x10³/μL',ref:'4.5-11.0'},
+      {param:'Plaquetas',unidad:'x10³/μL',ref:'150-450'},
+      {param:'Neutrófilos',unidad:'%',ref:'40-70'},
+      {param:'Linfocitos',unidad:'%',ref:'20-40'},
+      {param:'Monocitos',unidad:'%',ref:'2-8'},
+      {param:'Eosinófilos',unidad:'%',ref:'1-4'},
+      {param:'Basófilos',unidad:'%',ref:'0-1'},
+      {param:'VCM',unidad:'fL',ref:'80-100'},
+      {param:'HCM',unidad:'pg',ref:'27-33'},
+      {param:'CHCM',unidad:'g/dL',ref:'32-36'},
+      {param:'Recuento Reticulocitos',unidad:'%',ref:'0.5-2.5'}
+    ]
+  },
+  pt_ptt:{
+    nombre:'PT y PTT',
+    parametros:[
+      {param:'TP (Tiempo Protrombina)',unidad:'seg',ref:'11-14'},
+      {param:'INR',unidad:'-',ref:'0.8-1.2'},
+      {param:'TTPa',unidad:'seg',ref:'25-35'},
+      {param:'Tiempo Sangría',unidad:'min',ref:'2-9'},
+      {param:'Tiempo Coagulación',unidad:'min',ref:'5-10'}
+    ]
+  },
+  tipeaje:{
+    nombre:'Tipeaje',
+    parametros:[
+      {param:'Grupo ABO',unidad:'-',ref:'A / B / AB / O'},
+      {param:'Factor Rh',unidad:'-',ref:'Positivo / Negativo'},
+      {param:'Prueba Cruzada',unidad:'-',ref:'Compatible'}
+    ]
+  },
+  vsg:{
+    nombre:'VSG',
+    parametros:[
+      {param:'VSG 1ra Hora',unidad:'mm/h',ref:'H:0-20 / M:0-30'},
+      {param:'VSG 2da Hora',unidad:'mm/h',ref:'H:0-40 / M:0-50'}
+    ]
+  },
+  coproanalisis:{
+    nombre:'Coproanálisis',
+    parametros:[
+      {param:'Color',unidad:'-',ref:'Marrón'},
+      {param:'Consistencia',unidad:'-',ref:'Formada'},
+      {param:'Moco',unidad:'-',ref:'Ausente'},
+      {param:'Sangre',unidad:'-',ref:'Ausente'},
+      {param:'Restos Alimenticios',unidad:'-',ref:'Escasos'},
+      {param:'Leucocitos',unidad:'x campo',ref:'0-2'},
+      {param:'Eritrocitos',unidad:'x campo',ref:'0'},
+      {param:'Parásitos',unidad:'-',ref:'No se observan'},
+      {param:'Quistes',unidad:'-',ref:'No se observan'},
+      {param:'Huevos',unidad:'-',ref:'No se observan'},
+      {param:'Grasas',unidad:'-',ref:'Escasas'},
+      {param:'Almidón',unidad:'-',ref:'Escasas'}
+    ]
+  },
+  orina_todo:{
+    nombre:'Orina Todo',
+    parametros:[
+      {param:'Color',unidad:'-',ref:'Amarillo'},
+      {param:'Aspecto',unidad:'-',ref:'Limpido'},
+      {param:'pH',unidad:'-',ref:'5.0-7.0'},
+      {param:'Densidad',unidad:'-',ref:'1.003-1.030'},
+      {param:'Glucosa',unidad:'-',ref:'Negativo'},
+      {param:'Proteínas',unidad:'-',ref:'Negativo'},
+      {param:'Cetonas',unidad:'-',ref:'Negativo'},
+      {param:'Bilirrubina',unidad:'-',ref:'Negativo'},
+      {param:'Urobilinógeno',unidad:'-',ref:'0.2-1.0 mg/dL'},
+      {param:'Sangre',unidad:'-',ref:'Negativo'},
+      {param:'Nitritos',unidad:'-',ref:'Negativo'},
+      {param:'Leucocitos (tira)',unidad:'-',ref:'Negativo'},
+      {param:'Leucocitos (campo)',unidad:'x campo',ref:'0-5'},
+      {param:'Eritrocitos (campo)',unidad:'x campo',ref:'0-3'},
+      {param:'Células Epiteliales',unidad:'x campo',ref:'0-5'},
+      {param:'Cilindros',unidad:'x campo',ref:'0'},
+      {param:'Cristales',unidad:'-',ref:'Negativo'},
+      {param:'Bacterias',unidad:'-',ref:'Escasas'}
+    ]
+  },
+  depuracion_orina:{
+    nombre:'Depuración de Orina',
+    parametros:[
+      {param:'Volumen Orina 24h',unidad:'mL',ref:'800-2000'},
+      {param:'Creatinina Orina',unidad:'mg/dL',ref:'20-320'},
+      {param:'Creatinina Sangre',unidad:'mg/dL',ref:'0.6-1.2'},
+      {param:'Depuración Creatinina',unidad:'mL/min',ref:'90-140'},
+      {param:'Superficie Corporal',unidad:'m²',ref:'1.5-2.2'}
+    ]
+  },
+  quimica_sanguinea:{
+    nombre:'Química Sanguínea Todo',
+    parametros:[
+      {param:'Glucosa',unidad:'mg/dL',ref:'70-100'},
+      {param:'Urea',unidad:'mg/dL',ref:'15-45'},
+      {param:'Creatinina',unidad:'mg/dL',ref:'0.6-1.2'},
+      {param:'Ácido Úrico',unidad:'mg/dL',ref:'H:2.4-7.0 / M:2.0-6.0'},
+      {param:'Colesterol Total',unidad:'mg/dL',ref:'<200'},
+      {param:'Triglicéridos',unidad:'mg/dL',ref:'<150'},
+      {param:'HDL-Colesterol',unidad:'mg/dL',ref:'H:>40 / M:>50'},
+      {param:'LDL-Colesterol',unidad:'mg/dL',ref:'<130'},
+      {param:'VLDL-Colesterol',unidad:'mg/dL',ref:'<30'},
+      {param:'Proteínas Totales',unidad:'g/dL',ref:'6.0-8.3'},
+      {param:'Albumina',unidad:'g/dL',ref:'3.5-5.0'},
+      {param:'Bilirrubina Total',unidad:'mg/dL',ref:'0.2-1.2'},
+      {param:'Bilirrubina Directa',unidad:'mg/dL',ref:'0.0-0.3'},
+      {param:'TGO/AST',unidad:'U/L',ref:'0-40'},
+      {param:'TGP/ALT',unidad:'U/L',ref:'0-41'},
+      {param:'Fosfatasa Alcalina',unidad:'U/L',ref:'44-147'},
+      {param:'Gamma-GT',unidad:'U/L',ref:'H:9-64 / M:8-38'}
+    ]
+  },
+  electrolitos:{
+    nombre:'Electrolitos Todo',
+    parametros:[
+      {param:'Sodio (Na)',unidad:'mEq/L',ref:'135-145'},
+      {param:'Potasio (K)',unidad:'mEq/L',ref:'3.5-5.0'},
+      {param:'Cloro (Cl)',unidad:'mEq/L',ref:'98-106'},
+      {param:'Calcio Total',unidad:'mg/dL',ref:'8.5-10.5'},
+      {param:'Calcio Iónico',unidad:'mmol/L',ref:'1.15-1.33'},
+      {param:'Magnesio',unidad:'mg/dL',ref:'1.7-2.2'},
+      {param:'Fósforo (P)',unidad:'mg/dL',ref:'2.5-4.5'}
+    ]
+  },
+  hepatitis_a:{
+    nombre:'Hepatitis A - Prueba Rápida',
+    parametros:[
+      {param:'Anti-HAV IgM',unidad:'-',ref:'Negativo'},
+      {param:'Resultado',unidad:'-',ref:'Negativo / Positivo'}
+    ]
+  },
+  hepatitis_b:{
+    nombre:'Hepatitis B - Prueba Rápida',
+    parametros:[
+      {param:'HBsAg',unidad:'-',ref:'Negativo'},
+      {param:'Resultado',unidad:'-',ref:'Negativo / Positivo'}
+    ]
+  },
+  hepatitis_c:{
+    nombre:'Hepatitis C - Prueba Rápida',
+    parametros:[
+      {param:'Anti-HCV',unidad:'-',ref:'Negativo'},
+      {param:'Resultado',unidad:'-',ref:'Negativo / Positivo'}
+    ]
+  },
+  hiv:{
+    nombre:'HIV - Prueba Rápida',
+    parametros:[
+      {param:'VIH 1/2',unidad:'-',ref:'No Reactivo'},
+      {param:'Método',unidad:'-',ref:'Inmunocromatografía'},
+      {param:'Resultado',unidad:'-',ref:'No Reactivo / Reactivo'}
+    ]
+  },
+  vdrl:{
+    nombre:'VDRL',
+    parametros:[
+      {param:'VDRL Cualitativo',unidad:'-',ref:'No Reactivo'},
+      {param:'VDRL Cuantitativo',unidad:'Diluciones',ref:'Negativo'}
+    ]
+  },
+  pcr:{
+    nombre:'Proteínas C Reactivas',
+    parametros:[
+      {param:'PCR Cualitativa',unidad:'-',ref:'Negativo'},
+      {param:'PCR Cuantitativa',unidad:'mg/L',ref:'<5.0'}
+    ]
+  },
+  psa:{
+    nombre:'PSA - Prueba Rápida',
+    parametros:[
+      {param:'PSA Total',unidad:'ng/mL',ref:'<4.0'},
+      {param:'Resultado',unidad:'-',ref:'Negativo / Positivo'}
+    ]
+  },
+  toxoplasma:{
+    nombre:'Toxoplasma - Prueba Rápida',
+    parametros:[
+      {param:'IgG Anti-Toxoplasma',unidad:'UI/mL',ref:'<4 Neg / 4-8 Dud / >8 Pos'},
+      {param:'IgM Anti-Toxoplasma',unidad:'UI/mL',ref:'<0.9 Neg / 0.9-1.1 Dud / >1.1 Pos'},
+      {param:'Resultado',unidad:'-',ref:'Negativo / Positivo'}
+    ]
+  },
+  dengue:{
+    nombre:'Dengue - Prueba Rápida',
+    parametros:[
+      {param:'NS1',unidad:'-',ref:'Negativo'},
+      {param:'IgG',unidad:'-',ref:'Negativo'},
+      {param:'IgM',unidad:'-',ref:'Negativo'},
+      {param:'Resultado',unidad:'-',ref:'Negativo / Positivo'}
+    ]
+  },
+  ra_test:{
+    nombre:'RA Test',
+    parametros:[
+      {param:'Factor Reumatoide',unidad:'UI/mL',ref:'<14'},
+      {param:'Resultado',unidad:'-',ref:'Negativo / Positivo'}
+    ]
+  },
+  asto:{
+    nombre:'ASTO',
+    parametros:[
+      {param:'Antiestreptolisina O',unidad:'UI/mL',ref:'<200'},
+      {param:'Resultado',unidad:'-',ref:'Negativo / Positivo'}
+    ]
+  },
+  fibrinogeno:{
+    nombre:'Fibrinógeno',
+    parametros:[
+      {param:'Fibrinógeno',unidad:'mg/dL',ref:'200-400'}
+    ]
+  },
+  hcg:{
+    nombre:'HCG - Prueba Rápida',
+    parametros:[
+      {param:'Beta-HCG',unidad:'mUI/mL',ref:'<5 (No embarazo)'},
+      {param:'Resultado',unidad:'-',ref:'Negativo / Positivo'}
+    ]
+  },
+  helicobacter:{
+    nombre:'Helicobacter - Prueba Rápida',
+    parametros:[
+      {param:'Anti-Helicobacter pylori',unidad:'-',ref:'Negativo'},
+      {param:'Resultado',unidad:'-',ref:'Negativo / Positivo'}
+    ]
+  },
+  perfil_20:{
+    nombre:'Perfil 20',
+    parametros:[
+      {param:'Hemoglobina',unidad:'g/dL',ref:'H:14.0-18.0 / M:12.0-16.0'},
+      {param:'Hematocrito',unidad:'%',ref:'H:42-52 / M:36-46'},
+      {param:'Leucocitos',unidad:'x10³/μL',ref:'4.5-11.0'},
+      {param:'Plaquetas',unidad:'x10³/μL',ref:'150-450'},
+      {param:'TP (Tiempo Protrombina)',unidad:'seg',ref:'11-14'},
+      {param:'TTPa',unidad:'seg',ref:'25-35'},
+      {param:'Glucosa',unidad:'mg/dL',ref:'70-100'},
+      {param:'Colesterol Total',unidad:'mg/dL',ref:'<200'},
+      {param:'HDL-Colesterol',unidad:'mg/dL',ref:'H:>40 / M:>50'},
+      {param:'LDL-Colesterol',unidad:'mg/dL',ref:'<130'},
+      {param:'Triglicéridos',unidad:'mg/dL',ref:'<150'},
+      {param:'Ácido Úrico',unidad:'mg/dL',ref:'H:2.4-7.0 / M:2.0-6.0'},
+      {param:'Urea',unidad:'mg/dL',ref:'15-45'},
+      {param:'Creatinina',unidad:'mg/dL',ref:'0.6-1.2'},
+      {param:'Proteínas Totales',unidad:'g/dL',ref:'6.0-8.3'},
+      {param:'Albumina',unidad:'g/dL',ref:'3.5-5.0'},
+      {param:'Globulinas',unidad:'g/dL',ref:'2.3-3.5'},
+      {param:'TGO/AST',unidad:'U/L',ref:'0-40'},
+      {param:'TGP/ALT',unidad:'U/L',ref:'0-41'},
+      {param:'Fosfatasa Alcalina (ALP)',unidad:'U/L',ref:'44-147'},
+      {param:'Bilirrubina Total',unidad:'mg/dL',ref:'0.2-1.2'},
+      {param:'Bilirrubina Directa',unidad:'mg/dL',ref:'0.0-0.3'},
+      {param:'Bilirrubina Indirecta',unidad:'mg/dL',ref:'0.1-0.8'},
+      {param:'Orina',unidad:'-',ref:'Ver examen orina'},
+      {param:'Heces Fecales',unidad:'-',ref:'Ver coproanálisis'}
+    ]
+  },
+  perfil_prenatal:{
+    nombre:'Perfil Prenatal',
+    parametros:[
+      {param:'Hemoglobina',unidad:'g/dL',ref:'11.0-14.0'},
+      {param:'Hematocrito',unidad:'%',ref:'33-44'},
+      {param:'Leucocitos',unidad:'x10³/μL',ref:'5.0-12.0'},
+      {param:'Plaquetas',unidad:'x10³/μL',ref:'150-450'},
+      {param:'TP (Tiempo Protrombina)',unidad:'seg',ref:'11-14'},
+      {param:'TTPa',unidad:'seg',ref:'25-35'},
+      {param:'Glucosa',unidad:'mg/dL',ref:'70-92'},
+      {param:'Urea',unidad:'mg/dL',ref:'10-40'},
+      {param:'Creatinina',unidad:'mg/dL',ref:'0.4-0.8'},
+      {param:'VIH 1/2',unidad:'-',ref:'No Reactivo'},
+      {param:'VDRL',unidad:'-',ref:'No Reactivo'},
+      {param:'Toxoplasma IgG/IgM',unidad:'-',ref:'Negativo'},
+      {param:'Hepatitis A (Anti-HAV)',unidad:'-',ref:'Negativo'},
+      {param:'Hepatitis B (HBsAg)',unidad:'-',ref:'Negativo'},
+      {param:'Hepatitis C (Anti-HCV)',unidad:'-',ref:'Negativo'},
+      {param:'Grupo ABO',unidad:'-',ref:'A / B / AB / O'},
+      {param:'Factor Rh',unidad:'-',ref:'Positivo / Negativo'},
+      {param:'Orina: Aspecto',unidad:'-',ref:'Limpido'},
+      {param:'Orina: Color',unidad:'-',ref:'Amarillo'},
+      {param:'Orina: pH',unidad:'-',ref:'5.0-7.0'},
+      {param:'Orina: Densidad',unidad:'-',ref:'1.003-1.030'},
+      {param:'Orina: Proteínas',unidad:'-',ref:'Negativo'},
+      {param:'Orina: Glucosa',unidad:'-',ref:'Negativo'},
+      {param:'Orina: Nitritos',unidad:'-',ref:'Negativo'},
+      {param:'Orina: Leucocitos (campo)',unidad:'x campo',ref:'0-5'},
+      {param:'Orina: Eritrocitos (campo)',unidad:'x campo',ref:'0-3'},
+      {param:'Orina: Células Epiteliales',unidad:'x campo',ref:'0-5'},
+      {param:'Orina: Bacterias',unidad:'-',ref:'Escasas'}
+    ]
+  },
+  perfil_preoperatorio:{
+    nombre:'Perfil Preoperatorio',
+    parametros:[
+      {param:'Hemoglobina',unidad:'g/dL',ref:'H:14.0-18.0 / M:12.0-16.0'},
+      {param:'Hematocrito',unidad:'%',ref:'H:42-52 / M:36-46'},
+      {param:'Leucocitos',unidad:'x10³/μL',ref:'4.5-11.0'},
+      {param:'Plaquetas',unidad:'x10³/μL',ref:'150-450'},
+      {param:'TP (Tiempo Protrombina)',unidad:'seg',ref:'11-14'},
+      {param:'TTPa',unidad:'seg',ref:'25-35'},
+      {param:'Glucosa',unidad:'mg/dL',ref:'70-100'},
+      {param:'Urea',unidad:'mg/dL',ref:'15-45'},
+      {param:'Creatinina',unidad:'mg/dL',ref:'0.6-1.2'},
+      {param:'Proteínas Totales',unidad:'g/dL',ref:'6.0-8.3'},
+      {param:'Albumina',unidad:'g/dL',ref:'3.5-5.0'},
+      {param:'Globulinas',unidad:'g/dL',ref:'2.3-3.5'},
+      {param:'VIH 1/2',unidad:'-',ref:'No Reactivo'},
+      {param:'VDRL',unidad:'-',ref:'No Reactivo'},
+      {param:'Grupo ABO',unidad:'-',ref:'A / B / AB / O'},
+      {param:'Factor Rh',unidad:'-',ref:'Positivo / Negativo'}
+    ]
+  },
+  perfil_preeclamptico:{
+    nombre:'Perfil Preeclámptico',
+    parametros:[
+      {param:'Hemoglobina',unidad:'g/dL',ref:'11.0-14.0'},
+      {param:'Hematocrito',unidad:'%',ref:'33-44'},
+      {param:'Leucocitos',unidad:'x10³/μL',ref:'5.0-12.0'},
+      {param:'Plaquetas',unidad:'x10³/μL',ref:'150-450'},
+      {param:'TP (Tiempo Protrombina)',unidad:'seg',ref:'11-14'},
+      {param:'TTPa',unidad:'seg',ref:'25-35'},
+      {param:'Glucosa',unidad:'mg/dL',ref:'70-92'},
+      {param:'Urea',unidad:'mg/dL',ref:'10-40'},
+      {param:'Creatinina',unidad:'mg/dL',ref:'0.4-0.8'},
+      {param:'Ácido Úrico',unidad:'mg/dL',ref:'2.0-5.5'},
+      {param:'TGO/AST',unidad:'U/L',ref:'0-40'},
+      {param:'TGP/ALT',unidad:'U/L',ref:'0-41'},
+      {param:'LDH',unidad:'U/L',ref:'140-280'},
+      {param:'Proteínas Totales',unidad:'g/dL',ref:'6.0-8.3'},
+      {param:'Albumina',unidad:'g/dL',ref:'3.5-5.0'},
+      {param:'Globulinas',unidad:'g/dL',ref:'2.3-3.5'},
+      {param:'Fibrinógeno',unidad:'mg/dL',ref:'200-400'},
+      {param:'Orina',unidad:'-',ref:'Ver examen orina'}
+    ]
+  }
+};
+
+async function init(){
+  await solicitarAlmacenamientoPersistente();
+  const saved=await db.config.get('examenes');
+  if(saved){examenesConfig=saved.valor;}
+  else{examenesConfig=JSON.parse(JSON.stringify(examenesDefault));await db.config.put({clave:'examenes',valor:examenesConfig});}
+  
+  const savedLab=await db.config.get('laboratorio');
+  if(savedLab){
+    labConfig=savedLab.valor;
+    document.getElementById('labNombre').value=labConfig.nombre||'';
+    document.getElementById('labBioanalista').value=labConfig.bioanalista||'';
+    document.getElementById('labDireccion').value=labConfig.direccion||'';
+    document.getElementById('labTelefono').value=labConfig.telefono||'';
+    document.getElementById('labRif').value=labConfig.rif||'';
+    firmaBase64 = labConfig.firma || '';
+    if(firmaBase64){
+      document.getElementById('firmaPreview').innerHTML = `<img src="${firmaBase64}" style="max-height:60px;border:1px solid #ccc;padding:2px;">`;
+    }
+    
+    if(labConfig.bioanalista){
+      document.getElementById('bioanalista').value=labConfig.bioanalista;
+    }
+  }
+  
+  cargarSelectExamenes();cargarHistorial();renderizarConfigExamenes();
+}
+
+function cargarSelectExamenes(){
+  const sel=document.getElementById('tipoExamen');
+  sel.innerHTML='<option value="">Selecciona tipo de examen</option>';
+  const filtro=document.getElementById('filtroExamen');
+  filtro.innerHTML='<option value="">Todos los exámenes</option>';
+  for(const[key,val]of Object.entries(examenesConfig)){
+    const opt=document.createElement('option');opt.value=key;opt.textContent=val.nombre;sel.appendChild(opt);
+    const opt2=document.createElement('option');opt2.value=key;opt2.textContent=val.nombre;filtro.appendChild(opt2);
+  }
+}
+
+function showTab(evt, id){
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.tab-content').forEach(t=>t.classList.remove('active'));
+  if(evt && evt.target) evt.target.classList.add('active');
+  document.getElementById('tab-'+id).classList.add('active');
+}
+
+async function buscarPaciente(){
+  const q=document.getElementById('buscarCedula').value.trim().toLowerCase();
+  const div=document.getElementById('resultadosBusqueda');
+  if(q.length<2){div.innerHTML='';return;}
+  const pacientes=await db.pacientes.filter(p=>(p.cedula&&p.cedula.toLowerCase().includes(q))||(p.nombre&&p.nombre.toLowerCase().includes(q))).toArray();
+  div.innerHTML=pacientes.map(p=>`<div class="search-result" onclick="seleccionarPaciente(${p.id})"><strong>${p.nombre}</strong> — C.I. ${p.cedula}<br><small style="color:#64748b">Tel: ${p.telefono||'N/A'} | Edad: ${obtenerEdadPaciente(p)} años</small></div>`).join('');
+}
+
+async function seleccionarPaciente(id){
+  const p=await db.pacientes.get(id);
+  pacienteActualId=id;
+  document.getElementById('resultadosBusqueda').innerHTML='';
+  document.getElementById('pacienteEncontrado').classList.remove('hidden');
+  document.getElementById('pacienteEncontrado').innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px"><div><strong style="font-size:16px">${p.nombre}</strong><br><small>C.I. ${p.cedula} | Edad: ${obtenerEdadPaciente(p)} años | Sexo: ${p.sexo||'N/A'} | Tel: ${p.telefono||'N/A'}</small></div><span class="badge badge-green">Paciente registrado</span></div>`;
+  document.getElementById('entradaResultados').classList.remove('hidden');
+  document.getElementById('pacienteSeleccionado').textContent=`Paciente: ${p.nombre}`;
+  document.getElementById('registroPaciente').classList.add('hidden');
+  
+  if(labConfig.bioanalista && !document.getElementById('bioanalista').value){
+    document.getElementById('bioanalista').value = labConfig.bioanalista;
+  }
+  
+  await generarCodigoServicio();
+}
+
+function toggleRegistro(){document.getElementById('registroPaciente').classList.toggle('hidden');}
+
+function actualizarEdadPorFecha(){
+  const fNac = document.getElementById('fechaNac').value;
+  if(fNac){
+    document.getElementById('edad').value = calcularEdad(fNac);
+  }
+}
+
+function actualizarFechaPorEdad(){
+  const edadVal = parseInt(document.getElementById('edad').value);
+  if(!isNaN(edadVal) && edadVal >= 0){
+    const d = new Date();
+    d.setFullYear(d.getFullYear() - edadVal);
+    document.getElementById('fechaNac').value = d.toISOString().split('T')[0];
+  }
+}
+
+async function guardarPaciente(){
+  const cedula=document.getElementById('cedula').value.trim();
+  const nombre=document.getElementById('nombre').value.trim();
+  const edadInput=document.getElementById('edad').value.trim();
+  if(!cedula||!nombre){alert('Cédula y nombre son obligatorios');return;}
+  const existe=await db.pacientes.where('cedula').equals(cedula).first();
+  if(existe){alert('Ya existe un paciente con esta cédula');return;}
+  
+  const data={
+    cedula,
+    nombre,
+    edad: edadInput !== '' ? parseInt(edadInput) : null,
+    fecha_nacimiento: document.getElementById('fechaNac').value || null,
+    sexo: document.getElementById('sexo').value,
+    telefono: document.getElementById('telefono').value,
+    direccion: document.getElementById('direccion').value
+  };
+  
+  const id=await db.pacientes.add(data);
+  seleccionarPaciente(id);
+  document.getElementById('cedula').value='';
+  document.getElementById('nombre').value='';
+  document.getElementById('edad').value='';
+  document.getElementById('fechaNac').value='';
+  document.getElementById('sexo').value='';
+  document.getElementById('telefono').value='';
+  document.getElementById('direccion').value='';
+}
+
+async function generarCodigoServicio(){
+  const f=new Date();
+  let codigo='';
+  let existe=true;
+
+  while(existe){
+    const num=Math.floor(100000+Math.random()*900000);
+    codigo='BIO-'+f.getFullYear().toString().slice(-2)+String(f.getMonth()+1).padStart(2,'0')+String(f.getDate()).padStart(2,'0')+'-'+num;
+    const registro = await db.examenes.where('codigo_servicio').equals(codigo).first();
+    if(!registro) existe = false;
+  }
+
+  document.getElementById('codigoServicio').textContent=codigo;
+  return codigo;
+}
+
+function cargarParametros(){
+  const tipo=document.getElementById('tipoExamen').value;
+  const div=document.getElementById('parametrosExamen');
+  if(!tipo){div.innerHTML='';return;}
+  const config=examenesConfig[tipo];
+  if(!config){div.innerHTML='<p style="color:#ef4444">Examen no configurado</p>';return;}
+  div.innerHTML=config.parametros.map((p,i)=>`<div class="param-row"><label>${p.param} <small style="color:#94a3b8">(${p.unidad})</small></label><input type="text" id="val_${i}" data-param="${p.param}" placeholder="Valor" style="flex:1;min-width:100px" onkeydown="manejarEnter(event, ${i})" oninput="calcularIndices()"><span class="ref">Ref: ${p.ref}</span></div>`).join('');
+}
+
+function manejarEnter(e, index) {
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    const nextInput = document.getElementById(`val_${index + 1}`);
+    if (nextInput) {
+      nextInput.focus();
+    } else {
+      document.getElementById('observaciones').focus();
+    }
+  }
+}
+
+function calcularIndices() {
+  const hbInput = document.querySelector('input[data-param="Hemoglobina"]');
+  const htInput = document.querySelector('input[data-param="Hematocrito"]');
+  const leuInput = document.querySelector('input[data-param="Leucocitos"]');
+
+  if (hbInput && htInput) {
+    const hb = parseFloat(hbInput.value);
+    const ht = parseFloat(htInput.value);
+    const leu = leuInput ? parseFloat(leuInput.value) : null;
+
+    if (!isNaN(hb) && !isNaN(ht) && ht > 0) {
+      const vcmInput = document.querySelector('input[data-param="VCM"]');
+      const hcmInput = document.querySelector('input[data-param="HCM"]');
+      const chcmInput = document.querySelector('input[data-param="CHCM"]');
+
+      if (vcmInput && leu && !isNaN(leu) && leu > 0 && !vcmInput.value) {
+        vcmInput.value = ((ht * 10) / leu).toFixed(1);
+      }
+      if (hcmInput && leu && !isNaN(leu) && leu > 0 && !hcmInput.value) {
+        hcmInput.value = ((hb * 10) / leu).toFixed(1);
+      }
+      if (chcmInput && !chcmInput.value) {
+        chcmInput.value = ((hb * 100) / ht).toFixed(1);
+      }
+    }
+  }
+}
+
+async function guardarExamen(){
+  const tipo=document.getElementById('tipoExamen').value;
+  if(!tipo){alert('Selecciona un tipo de examen');return;}
+  const config=examenesConfig[tipo];
+  const codigo=document.getElementById('codigoServicio').textContent;
+  const examenId=await db.examenes.add({
+    paciente_id:pacienteActualId,
+    tipo_examen:tipo,
+    fecha:new Date().toISOString().split('T')[0],
+    codigo_servicio:codigo,
+    bioanalista:document.getElementById('bioanalista').value||labConfig.bioanalista||'No especificado',
+    observaciones:document.getElementById('observaciones').value||''
+  });
+  
+  for(let i=0;i<config.parametros.length;i++){
+    const valInput=document.getElementById(`val_${i}`);
+    const val=valInput?valInput.value.trim():'';
+    if(val !== ''){
+      await db.resultados.add({
+        examen_id:examenId,
+        parametro:config.parametros[i].param,
+        valor:val,
+        unidad:config.parametros[i].unidad,
+        referencia:config.parametros[i].ref
+      });
+    }
+  }
+  mostrarInforme(examenId);cargarHistorial();
+  alert('✅ Examen guardado. Código: '+codigo);
+}
+
+function esValorFueraDeRango(valor, referencia) {
+  const valNum = parseFloat(valor);
+  if (isNaN(valNum)) return false;
+  
+  const partes = referencia.match(/^([\d.]+)\s*-\s*([\d.]+)$/);
+  if (partes) {
+    const min = parseFloat(partes[1]);
+    const max = parseFloat(partes[2]);
+    if (!isNaN(min) && !isNaN(max)) {
+      return valNum < min || valNum > max;
+    }
+  }
+  return false;
+}
+
+async function mostrarInforme(examenId){
+  examenActualId = examenId;
+  const examen=await db.examenes.get(examenId);
+  const paciente=await db.pacientes.get(examen.paciente_id);
+  const resultados=await db.resultados.where('examen_id').equals(examenId).toArray();
+  const lab=labConfig.nombre||'Biomed Lab';
+  const edadPac = obtenerEdadPaciente(paciente);
+  
+  const html=`
+    <div class="report-container">
+      <div class="report-header">
+        <h2>${lab}</h2>
+        ${labConfig.direccion?`<p>${labConfig.direccion}</p>`:''}
+        ${labConfig.telefono?`<p>Tel: ${labConfig.telefono}</p>`:''}
+        ${labConfig.rif?`<p>RIF: ${labConfig.rif}</p>`:''}
+        <p style="font-weight:bold;margin-top:4px;">INFORME DE RESULTADOS DE LABORATORIO</p>
+      </div>
+      <div class="report-info">
+        <div>
+          <p><strong>Paciente:</strong> ${paciente?.nombre||'N/A'}</p>
+          <p><strong>C.I.:</strong> ${paciente?.cedula||'N/A'}</p>
+          <p><strong>Edad:</strong> ${edadPac} años | <strong>Sexo:</strong> ${paciente?.sexo||'N/A'}</p>
+        </div>
+        <div style="text-align:right">
+          <p><strong>Código:</strong> ${examen.codigo_servicio}</p>
+          <p><strong>Fecha:</strong> ${examen.fecha}</p>
+          <p><strong>Examen:</strong> ${examenesConfig[examen.tipo_examen]?.nombre||examen.tipo_examen}</p>
+        </div>
+      </div>
+      <table class="report-table">
+        <thead>
+          <tr>
+            <th>Parámetro</th>
+            <th style="text-align:center">Resultado</th>
+            <th style="text-align:center">Unidad</th>
+            <th style="text-align:center">Referencia</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${resultados.map(r=>{
+            const fueraRango = esValorFueraDeRango(r.valor, r.referencia);
+            const claseResultado = fueraRango ? 'out-of-range' : '';
+            return `
+            <tr>
+              <td>${r.parametro}</td>
+              <td style="text-align:center" class="${claseResultado}">${r.valor||'-'}${fueraRango ? ' (!)' : ''}</td>
+              <td style="text-align:center">${r.unidad}</td>
+              <td style="text-align:center;color:#444;">${r.referencia}</td>
+            </tr>
+          `}).join('')}
+        </tbody>
+      </table>
+      ${examen.observaciones?`<div class="report-obs"><strong>Observaciones:</strong> ${examen.observaciones}</div>`:''}
+      <div style="margin-top:20px;display:flex;justify-content:space-between;align-items:flex-end;">
+        <div style="font-size:9px;color:#555;">
+          <p style="margin:0;">Este informe tiene validez médica.</p>
+          <p style="margin:0;">Los valores de referencia pueden variar según el método.</p>
+        </div>
+        <div style="text-align:center">
+          ${firmaBase64 ? `<img src="${firmaBase64}" style="max-height:50px;display:block;margin:0 auto 2px auto;">` : ''}
+          <p style="border-top:1px solid #000;display:inline-block;padding-top:4px;width:160px;margin:0;font-size:11px;">
+            <strong>${examen.bioanalista}</strong><br>
+            <small>Bioanalista</small>
+          </p>
+        </div>
+      </div>
+    </div>
+  `;
+  document.getElementById('contenidoInforme').innerHTML=html;
+  document.getElementById('informeImpresion').classList.remove('hidden');
+  window.scrollTo({top:document.getElementById('informeImpresion').offsetTop-20,behavior:'smooth'});
+}
+
+async function enviarWhatsAppActual() {
+  if (!examenActualId) return;
+  await enviarWhatsApp(examenActualId);
+}
+
+async function enviarWhatsApp(examenId) {
+  const examen = await db.examenes.get(examenId);
+  const paciente = await db.pacientes.get(examen.paciente_id);
+  const resultados = await db.resultados.where('examen_id').equals(examenId).toArray();
+  const lab = labConfig.nombre || 'Biomed Lab';
+
+  if (!paciente || !paciente.telefono) {
+    alert('El paciente no tiene un número de teléfono registrado.');
+    return;
+  }
+
+  let telefono = paciente.telefono.replace(/\D/g, '');
+  if (telefono.length === 10) {
+    telefono = '58' + telefono;
+  }
+
+  let mensaje = `*${lab.toUpperCase()}*\n`;
+  mensaje += `📋 *Informe de Resultados*\n\n`;
+  mensaje += `*Paciente:* ${paciente.nombre}\n`;
+  mensaje += `*C.I.:* ${paciente.cedula}\n`;
+  mensaje += `*Código:* ${examen.codigo_servicio}\n`;
+  mensaje += `*Examen:* ${examenesConfig[examen.tipo_examen]?.nombre || examen.tipo_examen}\n`;
+  mensaje += `*Fecha:* ${examen.fecha}\n\n`;
+  mensaje += `🧪 *Resultados:*\n`;
+
+  resultados.forEach(r => {
+    mensaje += `• *${r.parametro}:* ${r.valor || '-'} ${r.unidad} (Ref: ${r.referencia})\n`;
+  });
+
+  if (examen.observaciones) {
+    mensaje += `\n*Obs:* ${examen.observaciones}`;
+  }
+
+  mensaje += `\n\n_Validado por: ${examen.bioanalista}_`;
+
+  const url = `https://wa.me/${telefono}?text=${encodeURIComponent(mensaje)}`;
+  window.open(url, '_blank');
+}
+
+async function copiarResumenTexto() {
+  if (!examenActualId) return;
+  const examen = await db.examenes.get(examenActualId);
+  const paciente = await db.pacientes.get(examen.paciente_id);
+  const resultados = await db.resultados.where('examen_id').equals(examenActualId).toArray();
+  
+  let texto = `${labConfig.nombre || 'Biomed Lab'}\n`;
+  texto += `Paciente: ${paciente?.nombre} (CI: ${paciente?.cedula})\n`;
+  texto += `Examen: ${examenesConfig[examen.tipo_examen]?.nombre}\n`;
+  texto += `Fecha: ${examen.fecha} | Orden: ${examen.codigo_servicio}\n\n`;
+  resultados.forEach(r => {
+    texto += `${r.parametro}: ${r.valor || '-'} ${r.unidad} [Ref: ${r.referencia}]\n`;
+  });
+  
+  navigator.clipboard.writeText(texto).then(() => {
+    alert('📋 Resumen copiado al portapapeles');
+  });
+}
+
+function nuevoExamen(){
+  document.getElementById('tipoExamen').value='';
+  document.getElementById('parametrosExamen').innerHTML='';
+  document.getElementById('observaciones').value='';
+  
+  document.getElementById('bioanalista').value=labConfig.bioanalista||'';
+  
+  document.getElementById('informeImpresion').classList.add('hidden');
+  generarCodigoServicio();
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+async function cargarHistorial(){
+  const filtroPac=document.getElementById('filtroPaciente').value.trim().toLowerCase();
+  const filtroExam=document.getElementById('filtroExamen').value;
+  let examenes=await db.examenes.orderBy('fecha').reverse().toArray();
+  if(filtroExam)examenes=examenes.filter(e=>e.tipo_examen===filtroExam);
+  const totalPacientes=await db.pacientes.count();
+  const totalExamenes=await db.examenes.count();
+  const hoy=new Date().toISOString().split('T')[0];
+  const examenesHoy=examenes.filter(e=>e.fecha===hoy).length;
+  document.getElementById('statsGrid').innerHTML=`<div class="stat-card"><div class="number">${totalPacientes}</div><div class="label">Pacientes</div></div><div class="stat-card"><div class="number">${totalExamenes}</div><div class="label">Exámenes</div></div><div class="stat-card"><div class="number">${examenesHoy}</div><div class="label">Hoy</div></div><div class="stat-card"><div class="number">${Object.keys(examenesConfig).length}</div><div class="label">Tipos de examen</div></div>`;
+  const tbody=document.getElementById('tablaHistorial');
+  let html='';
+  for(const e of examenes){
+    const p=await db.pacientes.get(e.paciente_id);
+    if(filtroPac&&p&&!p.nombre.toLowerCase().includes(filtroPac)&&!p.cedula.toLowerCase().includes(filtroPac))continue;
+    const nombreExamen=examenesConfig[e.tipo_examen]?.nombre||e.tipo_examen;
+    html+=`<tr><td><code style="background:#f1f5f9;padding:2px 6px;border-radius:4px;font-size:12px">${e.codigo_servicio}</code></td><td><strong>${p?.nombre||'N/A'}</strong><br><small style="color:#64748b">${p?.cedula||''}</small></td><td><span class="badge badge-blue">${nombreExamen}</span></td><td>${e.fecha}</td><td>${e.bioanalista}</td><td><button class="btn-primary btn-sm" onclick="verExamenModal(${e.id})">👁️ Ver</button></td></tr>`;
+  }
+  tbody.innerHTML=html||'<tr><td colspan="6" style="text-align:center;color:#94a3b8;padding:20px">No hay exámenes registrados</td></tr>';
+}
+
+async function verExamenModal(examenId){
+  const examen=await db.examenes.get(examenId);
+  const paciente=await db.pacientes.get(examen.paciente_id);
+  const resultados=await db.resultados.where('examen_id').equals(examenId).toArray();
+  const lab=labConfig.nombre||'Biomed Lab';
+  document.getElementById('modalContent').innerHTML=`<div style="text-align:center;border-bottom:2px solid #000;padding-bottom:10px;margin-bottom:16px"><h4 style="margin:0;color:#000">${lab}</h4><p style="margin:4px 0;font-size:12px;color:#000">Código: ${examen.codigo_servicio} | Fecha: ${examen.fecha}</p></div><p style="font-size:13px"><strong>Paciente:</strong> ${paciente?.nombre||'N/A'} (${paciente?.cedula||'N/A'})</p><p style="font-size:13px"><strong>Examen:</strong> ${examenesConfig[examen.tipo_examen]?.nombre||examen.tipo_examen}</p><p style="font-size:13px"><strong>Bioanalista:</strong> ${examen.bioanalista}</p><table style="margin-top:10px;font-size:12px"><thead><tr><th>Parámetro</th><th>Resultado</th><th>Unidad</th><th>Referencia</th></tr></thead><tbody>${resultados.map(r=>`<tr><td>${r.parametro}</td><td style="font-weight:700;text-align:center">${r.valor||'-'}</td><td style="text-align:center">${r.unidad}</td><td style="text-align:center;font-size:11px">${r.referencia}</td></tr>`).join('')}</tbody></table>${examen.observaciones?`<p style="font-size:12px;margin-top:10px"><strong>Obs:</strong> ${examen.observaciones}</p>`:''}`;
+  document.getElementById('modalOverlay').classList.add('active');
+}
+
+function cerrarModal(){document.getElementById('modalOverlay').classList.remove('active');}
+
+function agregarFilaParametro(){
+  const div=document.getElementById('nuevosParametros');
+  const row=document.createElement('div');row.className='np-row';
+  row.innerHTML='<input type="text" placeholder="Parámetro" class="np-nombre"><input type="text" placeholder="Unidad" class="np-unidad"><input type="text" placeholder="Referencia" class="np-ref"><button onclick="this.parentElement.remove()">✕</button>';
+  div.appendChild(row);
+}
+
+async function guardarNuevoExamen(){
+  const nombre=document.getElementById('nuevoExamenNombre').value.trim();
+  if(!nombre){alert('Escribe el nombre del examen');return;}
+  const filas=document.querySelectorAll('.np-row');
+  const parametros=[];
+  filas.forEach(f=>{
+    const nom=f.querySelector('.np-nombre')?.value.trim();
+    const uni=f.querySelector('.np-unidad')?.value.trim()||'-';
+    const ref=f.querySelector('.np-ref')?.value.trim()||'-';
+    if(nom)parametros.push({param:nom,unidad:uni,ref:ref});
+  });
+  if(parametros.length===0){alert('Agrega al menos un parámetro');return;}
+  const key='examen_'+Date.now();
+  examenesConfig[key]={nombre,parametros};
+  await db.config.put({clave:'examenes',valor:examenesConfig});
+  document.getElementById('nuevoExamenNombre').value='';
+  document.getElementById('nuevosParametros').innerHTML='<div class="np-row"><input type="text" placeholder="Parámetro" class="np-nombre"><input type="text" placeholder="Unidad" class="np-unidad"><input type="text" placeholder="Referencia" class="np-ref"></div>';
+  cargarSelectExamenes();renderizarConfigExamenes();
+  alert('✅ Examen "'+nombre+'" agregado correctamente');
+}
+
+function renderizarConfigExamenes(){
+  const div=document.getElementById('listaExamenesConfig');
+  const total=Object.keys(examenesConfig).length;
+  document.getElementById('totalExamenes').textContent=total;
+  div.innerHTML=Object.entries(examenesConfig).map(([key,val])=>`<div class="config-exam-item"><div><strong>${val.nombre}</strong> <small style="color:#64748b">(${val.parametros.length} parámetros)</small></div>${key.startsWith('examen_')?`<button class="btn-danger btn-sm" onclick="eliminarExamen('${key}')">Eliminar</button>`:'<span class="badge badge-green">Predeterminado</span>'}</div>`).join('');
+}
+
+async function eliminarExamen(key){
+  if(!confirm('¿Eliminar este examen?'))return;
+  delete examenesConfig[key];
+  await db.config.put({clave:'examenes',valor:examenesConfig});
+  cargarSelectExamenes();renderizarConfigExamenes();
+}
+
+function cargarImagenFirma(input) {
+  const file = input.files[0];
+  if (file) {
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      firmaBase64 = e.target.result;
+      document.getElementById('firmaPreview').innerHTML = `<img src="${firmaBase64}" style="max-height:60px;border:1px solid #ccc;padding:2px;">`;
+    };
+    reader.readAsDataURL(file);
+  }
+}
+
+async function guardarConfigLab(){
+  labConfig={
+    nombre:document.getElementById('labNombre').value,
+    bioanalista:document.getElementById('labBioanalista').value,
+    direccion:document.getElementById('labDireccion').value,
+    telefono:document.getElementById('labTelefono').value,
+    rif:document.getElementById('labRif').value,
+    firma: firmaBase64
+  };
+  await db.config.put({clave:'laboratorio',valor:labConfig});
+  
+  document.getElementById('bioanalista').value=labConfig.bioanalista||'';
+  
+  alert('✅ Datos del laboratorio y personal guardados');
+}
+
+async function exportarDB(){
+  const data={
+    pacientes:await db.pacientes.toArray(),
+    examenes:await db.examenes.toArray(),
+    resultados:await db.resultados.toArray(),
+    config:await db.config.toArray(),
+    exportado:new Date().toISOString(),
+    version:'BiomedLab-v1'
+  };
+  const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url;
+  a.download='biomed-backup-'+new Date().toISOString().split('T')[0]+'.json';
+  a.click();
+  URL.revokeObjectURL(url);
+  document.getElementById('exportMsg').innerHTML='<div class="alert alert-success">✅ Respaldo exportado correctamente</div>';
+  setTimeout(()=>document.getElementById('exportMsg').innerHTML='',3000);
+}
+
+async function importarDB(input){
+  const file=input.files[0];
+  if(!file)return;
+  const reader=new FileReader();
+  reader.onload=async(e)=>{
+    try{
+      const data=JSON.parse(e.target.result);
+      if(!data.pacientes||!data.examenes||!data.resultados){alert('Archivo inválido');return;}
+      if(!confirm('⚠️ Esto reemplazará TODOS los datos actuales. ¿Continuar?'))return;
+      await db.pacientes.clear();await db.examenes.clear();await db.resultados.clear();await db.config.clear();
+      await db.pacientes.bulkAdd(data.pacientes);
+      await db.examenes.bulkAdd(data.examenes);
+      await db.resultados.bulkAdd(data.resultados);
+      if(data.config)await db.config.bulkAdd(data.config);
+      document.getElementById('importMsg').innerHTML='<div class="alert alert-success">✅ Datos restaurados correctamente</div>';
+      init();cargarHistorial();
+    }catch(err){alert('Error al importar: '+err.message);}
+  };
+  reader.readAsText(file);
+  input.value='';
+}
+
+async function limpiarDB(){
+  if(!confirm('⚠️ ¿ESTÁS SEGURO? Se borrarán TODOS los pacientes, exámenes y resultados. Esta acción NO se puede deshacer.'))return;
+  if(!confirm('ÚLTIMA CONFIRMACIÓN: ¿Borrar toda la base de datos?'))return;
+  await db.pacientes.clear();await db.examenes.clear();await db.resultados.clear();await db.config.clear();
+  examenesConfig=JSON.parse(JSON.stringify(examenesDefault));
+  await db.config.put({clave:'examenes',valor:examenesConfig});
+  alert('🗑️ Base de datos limpiada');
+  init();cargarHistorial();
+}
+
+function calcularEdad(fechaNac){
+  if(!fechaNac) return '?';
+  const nac = new Date(fechaNac);
+  if(isNaN(nac.getTime())) return '?';
+  const diff = Date.now() - nac.getTime();
+  const edad = Math.floor(diff / (1000 * 60 * 60 * 24 * 365.25));
+  return edad >= 0 ? edad : '?';
+}
+
+function obtenerEdadPaciente(paciente){
+  if(!paciente) return '?';
+  if(paciente.edad !== null && paciente.edad !== undefined && paciente.edad !== '') return paciente.edad;
+  if(paciente.fecha_nacimiento) return calcularEdad(paciente.fecha_nacimiento);
+  return '?';
+}
+
+init();
+</script>
+</body>
+</html>
