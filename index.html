@@ -101,10 +101,10 @@
 </head>
 <body>
 <div class="container">
-<header class="no-print"><h1>🧬 Biomed Lab</h1><p>Sistema de Gestión de Resultados</p></header>
+<header class="no-print"><h1>🧪 Biomed Lab</h1><p>Sistema de Gestión de Resultados</p></header>
 
 <div class="tabs no-print">
-  <button class="tab active" onclick="showTab(event, 'registro')">📝 Registro</button>
+  <button class="tab active" onclick="showTab(event, 'registro')">📌 Registro</button>
   <button class="tab" onclick="showTab(event, 'historial')">📋 Historial</button>
   <button class="tab" onclick="showTab(event, 'config')">⚙️ Configuración</button>
   <button class="tab" onclick="showTab(event, 'respaldo')">💾 Respaldo</button>
@@ -120,7 +120,7 @@
   </div>
 
   <div class="card hidden no-print" id="registroPaciente">
-    <h2>📝 Registrar Paciente Nuevo</h2>
+    <h2>📌 Registrar Paciente Nuevo</h2>
     <div class="grid-2">
       <input type="text" id="cedula" placeholder="Cédula / ID *">
       <input type="text" id="nombre" placeholder="Nombre completo *">
@@ -152,7 +152,7 @@
     </div>
     <div id="parametrosExamen"></div>
     <textarea id="observaciones" rows="2" placeholder="Observaciones (opcional)"></textarea>
-    <button class="btn-success" onclick="guardarExamen()">✅ Guardar Resultados</button>
+    <button class="btn-success" onclick="guardarExamen()">✔ Guardar Resultados</button>
   </div>
 
   <div class="card hidden" id="informeImpresion">
@@ -198,9 +198,20 @@
     <button class="btn-outline btn-sm" onclick="agregarFilaParametro()">+ Agregar parámetro</button>
     <br><br>
     <button class="btn-success" onclick="guardarNuevoExamen()">💾 Guardar nuevo examen</button>
+    
+    <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #e2e8f0;">
+      <button class="btn-warning btn-sm" onclick="sincronizarExamenesBase()">
+        🔄 Actualizar catálogo de exámenes predeterminados
+      </button>
+      <small style="display:block; color:#64748b; margin-top:4px;">
+        Fusiona los nuevos parámetros del sistema sin borrar tus pacientes ni tus exámenes personalizados.
+      </small>
+    </div>
+
     <div class="section-title">Exámenes configurados (<span id="totalExamenes">0</span>)</div>
     <div id="listaExamenesConfig"></div>
   </div>
+
   <div class="card no-print">
     <h2>🏥 Datos del Laboratorio y Personal</h2>
     <div class="grid-2">
@@ -234,7 +245,7 @@
     <h2>📥 Importar Base de Datos</h2>
     <p style="color:#64748b;font-size:13px">Restaura datos desde un archivo de respaldo. <strong style="color:#ef4444">¡Reemplazará los datos actuales!</strong></p>
     <div class="file-input-wrapper">
-      <button class="btn-warning">📁 Seleccionar archivo JSON</button>
+      <button class="btn-warning">📂 Seleccionar archivo JSON</button>
       <input type="file" id="importFile" accept=".json" onchange="importarDB(this)">
     </div>
     <div id="importMsg" style="margin-top:10px"></div>
@@ -291,22 +302,26 @@ let examenesConfig={};
 let labConfig={};
 let firmaBase64 = '';
 
+const parametrosHematologiaBase = [
+  {param:'Hemoglobina',unidad:'g/dL',ref:'H:14.0-18.0 / M:12.0-16.0'},
+  {param:'Hematocrito',unidad:'%',ref:'H:42-52 / M:36-46'},
+  {param:'Leucocitos',unidad:'x10³/µL',ref:'4.5-11.0'},
+  {param:'Plaquetas',unidad:'x10³/µL',ref:'150-450'},
+  {param:'Neutrófilos',unidad:'%',ref:'40-70'},
+  {param:'Linfocitos',unidad:'%',ref:'20-40'},
+  {param:'Monocitos',unidad:'%',ref:'2-8'},
+  {param:'Eosinófilos',unidad:'%',ref:'1-4'},
+  {param:'Basófilos',unidad:'%',ref:'0-1'},
+  {param:'VCM',unidad:'fL',ref:'80-100'},
+  {param:'HCM',unidad:'pg',ref:'27-33'},
+  {param:'CHCM',unidad:'g/dL',ref:'32-36'}
+];
+
 const examenesDefault={
   hematologia:{
     nombre:'Hematología',
     parametros:[
-      {param:'Hemoglobina',unidad:'g/dL',ref:'H:14.0-18.0 / M:12.0-16.0'},
-      {param:'Hematocrito',unidad:'%',ref:'H:42-52 / M:36-46'},
-      {param:'Leucocitos',unidad:'x10³/μL',ref:'4.5-11.0'},
-      {param:'Plaquetas',unidad:'x10³/μL',ref:'150-450'},
-      {param:'Neutrófilos',unidad:'%',ref:'40-70'},
-      {param:'Linfocitos',unidad:'%',ref:'20-40'},
-      {param:'Monocitos',unidad:'%',ref:'2-8'},
-      {param:'Eosinófilos',unidad:'%',ref:'1-4'},
-      {param:'Basófilos',unidad:'%',ref:'0-1'},
-      {param:'VCM',unidad:'fL',ref:'80-100'},
-      {param:'HCM',unidad:'pg',ref:'27-33'},
-      {param:'CHCM',unidad:'g/dL',ref:'32-36'},
+      ...parametrosHematologiaBase,
       {param:'Recuento Reticulocitos',unidad:'%',ref:'0.5-2.5'}
     ]
   },
@@ -523,10 +538,7 @@ const examenesDefault={
   perfil_20:{
     nombre:'Perfil 20',
     parametros:[
-      {param:'Hemoglobina',unidad:'g/dL',ref:'H:14.0-18.0 / M:12.0-16.0'},
-      {param:'Hematocrito',unidad:'%',ref:'H:42-52 / M:36-46'},
-      {param:'Leucocitos',unidad:'x10³/μL',ref:'4.5-11.0'},
-      {param:'Plaquetas',unidad:'x10³/μL',ref:'150-450'},
+      ...parametrosHematologiaBase,
       {param:'TP (Tiempo Protrombina)',unidad:'seg',ref:'11-14'},
       {param:'TTPa',unidad:'seg',ref:'25-35'},
       {param:'Glucosa',unidad:'mg/dL',ref:'70-100'},
@@ -555,8 +567,16 @@ const examenesDefault={
     parametros:[
       {param:'Hemoglobina',unidad:'g/dL',ref:'11.0-14.0'},
       {param:'Hematocrito',unidad:'%',ref:'33-44'},
-      {param:'Leucocitos',unidad:'x10³/μL',ref:'5.0-12.0'},
-      {param:'Plaquetas',unidad:'x10³/μL',ref:'150-450'},
+      {param:'Leucocitos',unidad:'x10³/µL',ref:'5.0-12.0'},
+      {param:'Plaquetas',unidad:'x10³/µL',ref:'150-450'},
+      {param:'Neutrófilos',unidad:'%',ref:'40-70'},
+      {param:'Linfocitos',unidad:'%',ref:'20-40'},
+      {param:'Monocitos',unidad:'%',ref:'2-8'},
+      {param:'Eosinófilos',unidad:'%',ref:'1-4'},
+      {param:'Basófilos',unidad:'%',ref:'0-1'},
+      {param:'VCM',unidad:'fL',ref:'80-100'},
+      {param:'HCM',unidad:'pg',ref:'27-33'},
+      {param:'CHCM',unidad:'g/dL',ref:'32-36'},
       {param:'TP (Tiempo Protrombina)',unidad:'seg',ref:'11-14'},
       {param:'TTPa',unidad:'seg',ref:'25-35'},
       {param:'Glucosa',unidad:'mg/dL',ref:'70-92'},
@@ -586,10 +606,7 @@ const examenesDefault={
   perfil_preoperatorio:{
     nombre:'Perfil Preoperatorio',
     parametros:[
-      {param:'Hemoglobina',unidad:'g/dL',ref:'H:14.0-18.0 / M:12.0-16.0'},
-      {param:'Hematocrito',unidad:'%',ref:'H:42-52 / M:36-46'},
-      {param:'Leucocitos',unidad:'x10³/μL',ref:'4.5-11.0'},
-      {param:'Plaquetas',unidad:'x10³/μL',ref:'150-450'},
+      ...parametrosHematologiaBase,
       {param:'TP (Tiempo Protrombina)',unidad:'seg',ref:'11-14'},
       {param:'TTPa',unidad:'seg',ref:'25-35'},
       {param:'Glucosa',unidad:'mg/dL',ref:'70-100'},
@@ -609,8 +626,16 @@ const examenesDefault={
     parametros:[
       {param:'Hemoglobina',unidad:'g/dL',ref:'11.0-14.0'},
       {param:'Hematocrito',unidad:'%',ref:'33-44'},
-      {param:'Leucocitos',unidad:'x10³/μL',ref:'5.0-12.0'},
-      {param:'Plaquetas',unidad:'x10³/μL',ref:'150-450'},
+      {param:'Leucocitos',unidad:'x10³/µL',ref:'5.0-12.0'},
+      {param:'Plaquetas',unidad:'x10³/µL',ref:'150-450'},
+      {param:'Neutrófilos',unidad:'%',ref:'40-70'},
+      {param:'Linfocitos',unidad:'%',ref:'20-40'},
+      {param:'Monocitos',unidad:'%',ref:'2-8'},
+      {param:'Eosinófilos',unidad:'%',ref:'1-4'},
+      {param:'Basófilos',unidad:'%',ref:'0-1'},
+      {param:'VCM',unidad:'fL',ref:'80-100'},
+      {param:'HCM',unidad:'pg',ref:'27-33'},
+      {param:'CHCM',unidad:'g/dL',ref:'32-36'},
       {param:'TP (Tiempo Protrombina)',unidad:'seg',ref:'11-14'},
       {param:'TTPa',unidad:'seg',ref:'25-35'},
       {param:'Glucosa',unidad:'mg/dL',ref:'70-92'},
@@ -654,6 +679,37 @@ async function init(){
   }
   
   cargarSelectExamenes();cargarHistorial();renderizarConfigExamenes();
+}
+
+async function sincronizarExamenesBase() {
+  if (!confirm("¿Deseas actualizar el catálogo de exámenes predeterminados con los nuevos parámetros del sistema? Tus exámenes personalizados se mantendrán intactos.")) {
+    return;
+  }
+
+  let configGuardada = await db.config.get('examenes');
+  let examenesActuales = configGuardada ? configGuardada.valor : {};
+
+  for (const [clave, examenBase] of Object.entries(examenesDefault)) {
+    if (!examenesActuales[clave]) {
+      examenesActuales[clave] = JSON.parse(JSON.stringify(examenBase));
+    } else {
+      const parametrosExistentes = examenesActuales[clave].parametros.map(p => p.param);
+      
+      examenBase.parametros.forEach(paramBase => {
+        if (!parametrosExistentes.includes(paramBase.param)) {
+          examenesActuales[clave].parametros.push(paramBase);
+        }
+      });
+    }
+  }
+
+  examenesConfig = examenesActuales;
+  await db.config.put({ clave: 'examenes', valor: examenesConfig });
+
+  cargarSelectExamenes();
+  renderizarConfigExamenes();
+
+  alert("✅ Catálogo actualizado correctamente sin perder tus registros.");
 }
 
 function cargarSelectExamenes(){
@@ -839,7 +895,7 @@ async function guardarExamen(){
     }
   }
   mostrarInforme(examenId);cargarHistorial();
-  alert('✅ Examen guardado. Código: '+codigo);
+  alert('✔ Examen guardado. Código: '+codigo);
 }
 
 function esValorFueraDeRango(valor, referencia) {
@@ -1062,7 +1118,7 @@ async function guardarNuevoExamen(){
   document.getElementById('nuevoExamenNombre').value='';
   document.getElementById('nuevosParametros').innerHTML='<div class="np-row"><input type="text" placeholder="Parámetro" class="np-nombre"><input type="text" placeholder="Unidad" class="np-unidad"><input type="text" placeholder="Referencia" class="np-ref"></div>';
   cargarSelectExamenes();renderizarConfigExamenes();
-  alert('✅ Examen "'+nombre+'" agregado correctamente');
+  alert('✔ Examen "'+nombre+'" agregado correctamente');
 }
 
 function renderizarConfigExamenes(){
@@ -1104,7 +1160,7 @@ async function guardarConfigLab(){
   
   document.getElementById('bioanalista').value=labConfig.bioanalista||'';
   
-  alert('✅ Datos del laboratorio y personal guardados');
+  alert('✔ Datos del laboratorio y personal guardados');
 }
 
 async function exportarDB(){
@@ -1123,7 +1179,7 @@ async function exportarDB(){
   a.download='biomed-backup-'+new Date().toISOString().split('T')[0]+'.json';
   a.click();
   URL.revokeObjectURL(url);
-  document.getElementById('exportMsg').innerHTML='<div class="alert alert-success">✅ Respaldo exportado correctamente</div>';
+  document.getElementById('exportMsg').innerHTML='<div class="alert alert-success">✔ Respaldo exportado correctamente</div>';
   setTimeout(()=>document.getElementById('exportMsg').innerHTML='',3000);
 }
 
@@ -1141,7 +1197,7 @@ async function importarDB(input){
       await db.examenes.bulkAdd(data.examenes);
       await db.resultados.bulkAdd(data.resultados);
       if(data.config)await db.config.bulkAdd(data.config);
-      document.getElementById('importMsg').innerHTML='<div class="alert alert-success">✅ Datos restaurados correctamente</div>';
+      document.getElementById('importMsg').innerHTML='<div class="alert alert-success">✔ Datos restaurados correctamente</div>';
       init();cargarHistorial();
     }catch(err){alert('Error al importar: '+err.message);}
   };
