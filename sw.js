@@ -1,15 +1,19 @@
-const CACHE_NAME = 'biomed-lab-v2';
+const CACHE_NAME = 'biomed-lab-v3';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
+  './styles.css',
+  './db.js',
+  './app.js',
   './manifest.json',
+  './assets/icon-192.png',
+  './assets/icon-512.png',
   'https://cdn.jsdelivr.net/npm/dexie@3.2.4/dist/dexie.min.js'
 ];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
-      console.log('Archivos en caché guardados con éxito');
       return cache.addAll(ASSETS_TO_CACHE);
     })
   );
@@ -22,7 +26,6 @@ self.addEventListener('activate', (event) => {
       return Promise.all(
         cacheNames.map((cache) => {
           if (cache !== CACHE_NAME) {
-            console.log('Borrando caché antigua:', cache);
             return caches.delete(cache);
           }
         })
