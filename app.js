@@ -238,7 +238,7 @@ const examenesDefault = {
     nombre:'Orina Todo',
     parametros:[
       {param:'Color',unidad:'-',ref:'Amarillo'},
-      {param:'Aspecto',unidad:'-',ref:'Líimpido'},
+      {param:'Aspecto',unidad:'-',ref:'Límipido'},
       {param:'pH',unidad:'-',ref:'5.0-7.0'},
       {param:'Densidad',unidad:'-',ref:'1.003-1.030'},
       {param:'Glucosa',unidad:'-',ref:'Negativo'},
@@ -458,6 +458,20 @@ if('serviceWorker' in navigator){
   });
 }
 
+async function solicitarAlmacenamientoPersistente() {
+  if (navigator.storage && navigator.storage.persist) {
+    await navigator.storage.persist();
+  }
+}
+
+async function hashPassword(password) {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(password);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
 async function init(){
   await solicitarAlmacenamientoPersistente();
 
@@ -614,18 +628,55 @@ async function deleteUser(username) {
   }
 }
 
+// CÁLCULOS AUTOMÁTICOS INTEGRADOS A CAMPOS DINÁMICOS
 function calcularIndices() {
-  const hbInput = document.querySelector('input[data-param="Hemoglobina"]');
-  const htInput = document.querySelector('input[data-param="Hematocrito"]');
+  // 1. Hematología
+  const eritrocitosEl = document.querySelector('input[data-param="Eritrocitos"]') || document.querySelector('input[data-param="Glóbulos Rojos"]');
+  const hbEl = document.querySelector('input[data-param="Hemoglobina"]');
+  const htEl = document.querySelector('input[data-param="Hematocrito"]');
 
-  if (hbInput && htInput) {
-    const hb = parseFloat(hbInput.value);
-    const ht = parseFloat(htInput.value);
+  if (hbEl && htEl) {
+    const hb = parseFloat(hbEl.value);
+    const ht = parseFloat(htEl.value);
+    const eritrocitos = eritrocitosEl ? parseFloat(eritrocitosEl.value) : NaN;
 
-    if (!isNaN(hb) && !isNaN(ht) && ht > 0) {
-      const chcmInput = document.querySelector('input[data-param="CHCM"]');
-      if (chcmInput && !chcmInput.value) {
-        chcmInput.value = ((hb * 100) / ht).toFixed(1);
+    const vcmEl = document.querySelector('input[data-param="VCM"]');
+    const hcmEl = document.querySelector('input[data-param="HCM"]');
+    const chcmEl = document.querySelector('input[data-param="CHCM"]');
+
+    if (vcmEl && !isNaN(ht) && !isNaN(eritrocitos) && eritrocitos > 0) {
+      vcmEl.value = ((ht * 10) / eritrocitos).toFixed(1);
+    }
+    if (hcmEl && !isNaN(hb) && !isNaN(eritrocitos) && eritrocitos > 0) {
+      hcmEl.value = ((hb * 10) / eritrocitos).toFixed(1);
+    }
+    if (chcmEl && !isNaN(hb) && !isNaN(ht) && ht > 0) {
+      chcmEl.value = ((hb * 100) / ht).toFixed(1);
+    }
+  }
+
+  // 2. Colesterol y Perfil Lipídico
+  const colEl = document.querySelector('input[data-param="Colesterol Total"]');
+  const hdlEl = document.querySelector('input[data-param="HDL Colesterol"]') || document.querySelector('input[data-param="HDL-Colesterol"]');
+  const tgEl = document.querySelector('input[data-param="Triglicéridos"]');
+
+  if (colEl && hdlEl) {
+    const colTotal = parseFloat(colEl.value);
+    const hdl = parseFloat(hdlEl.value);
+    const trigliceridos = tgEl ? parseFloat(tgEl.value) : NaN;
+
+    const ldlEl = document.querySelector('input[data-param="LDL Colesterol"]') || document.querySelector('input[data-param="LDL-Colesterol"]');
+    const vldlEl = document.querySelector('input[data-param="VLDL Colesterol"]') || document.querySelector('input[data-param="VLDL-Colesterol"]');
+
+    if (vldlEl && !isNaN(trigliceridos)) {
+      vldlEl.value = (trigliceridos / 5).toFixed(1);
+    }
+
+    if (ldlEl && !isNaN(colTotal) && !isNaN(hdl) && !isNaN(trigliceridos)) {
+      if (trigliceridos < 400) {
+        ldlEl.value = (colTotal - hdl - (trigliceridos / 5)).toFixed(1);
+      } else {
+        ldlEl.value = 'N/A';
       }
     }
   }
@@ -751,7 +802,6 @@ async function guardarPaciente() {
   const id = await db.pacientes.add(data);
   seleccionarPaciente(id);
 
-  // Limpiar formulario
   document.getElementById('cedula').value = '';
   document.getElementById('cedula').readOnly = false;
   if(document.getElementById('esMenor')) document.getElementById('esMenor').checked = false;
@@ -1232,6 +1282,83 @@ async function importarDB(input){
   input.value='';
 }
 
+async function guardarRespaldoEnDisco() {
+  try {
+    const datosLaboratorio = {
+      pacientes: await db.pacientes.toArray(),
+      examenes: await db.examenes.toArray(),
+      resultados: await db.resultados.toArray(),
+      config: await db.config.toArray(),
+      users: await db.users.toArray(),
+      exportado: new Date().toISOString(),
+      version: 'BiomedLab-v2'
+    };
+
+    const opciones = {
+      suggestedName: `respaldo_biomed_lab_${new Date().toISOString().slice(0, 10)}.json`,
+      types: [{
+        description: 'Copia de seguridad de laboratorio (*.json)',
+        accept: { 'application/json': ['.json'] },
+      }],
+    };
+
+    const fileHandle = await window.showSaveFilePicker(opciones);
+    const writableStream = await fileHandle.createWritable();
+    await writableStream.write(JSON.stringify(datosLaboratorio, null, 2));
+    await writableStream.close();
+
+    alert('✅ Respaldo guardado con éxito en el disco duro.');
+  } catch (err) {
+    if (err.name !== 'AbortError') {
+      console.error('Error al guardar el respaldo:', err);
+      alert('❌ Ocurrió un error al intentar guardar el archivo.');
+    }
+  }
+}
+
+async function cargarRespaldoDesdeDisco() {
+  try {
+    const opciones = {
+      types: [{
+        description: 'Copia de seguridad de laboratorio (*.json)',
+        accept: { 'application/json': ['.json'] },
+      }],
+      multiple: false
+    };
+
+    const [fileHandle] = await window.showOpenFilePicker(opciones);
+    const file = await fileHandle.getFile();
+    const contenidoTexto = await file.text();
+    const datosImportados = JSON.parse(contenidoTexto);
+
+    if (!datosImportados || typeof datosImportados !== 'object') {
+      throw new Error("El archivo seleccionado no es válido.");
+    }
+
+    if (!confirm('⚠️ Esto reemplazará TODOS los datos actuales. ¿Continuar?')) return;
+
+    await db.pacientes.clear();
+    await db.examenes.clear();
+    await db.resultados.clear();
+    await db.config.clear();
+    if (datosImportados.users) await db.users.clear();
+
+    if (datosImportados.pacientes) await db.pacientes.bulkAdd(datosImportados.pacientes);
+    if (datosImportados.examenes) await db.examenes.bulkAdd(datosImportados.examenes);
+    if (datosImportados.resultados) await db.resultados.bulkAdd(datosImportados.resultados);
+    if (datosImportados.config) await db.config.bulkAdd(datosImportados.config);
+    if (datosImportados.users) await db.users.bulkAdd(datosImportados.users);
+
+    alert('✅ Base de datos importada y actualizada con éxito.');
+    init();
+  } catch (err) {
+    if (err.name !== 'AbortError') {
+      console.error('Error al importar el respaldo:', err);
+      alert('❌ El archivo seleccionado no tiene un formato válido.');
+    }
+  }
+}
+
 async function limpiarDB(){
   if(!confirm('⚠️ ¿ESTÁS SEGURO? Se borrarán TODOS los pacientes, exámenes y resultados. Esta acción NO se puede deshacer.'))return;
   if(!confirm('ÚLTIMA CONFIRMACIÓN: ¿Borrar toda la base de datos?'))return;
@@ -1266,4 +1393,9 @@ function obtenerEdadPaciente(paciente) {
   return '?';
 }
 
-init();
+// Inicialización de escuchadores de eventos y arranque de aplicación
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('btnExportarDirecto')?.addEventListener('click', guardarRespaldoEnDisco);
+  document.getElementById('btnImportarDirecto')?.addEventListener('click', cargarRespaldoDesdeDisco);
+  init();
+});

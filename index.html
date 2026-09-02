@@ -240,17 +240,23 @@
       <h2>💾 Exportar Base de Datos</h2>
       <p style="color:#64748b;font-size:13px">Genera un archivo JSON con todos los datos. Guárdalo en USB o nube.</p>
       <button class="btn-info" onclick="exportarDB()">📤 Exportar todo (JSON)</button>
+      <button class="btn-primary" id="btnExportarDirecto" style="margin-left: 8px;">💾 Guardar directamente en Disco Duro</button>
       <div id="exportMsg" style="margin-top:10px"></div>
     </div>
+    
     <div class="card no-print">
       <h2>📥 Importar Base de Datos</h2>
       <p style="color:#64748b;font-size:13px">Restaura datos desde un archivo de respaldo. <strong style="color:var(--danger)">¡Reemplazará los datos actuales!</strong></p>
-      <div class="file-input-wrapper">
-        <button class="btn-warning">📁 Seleccionar archivo JSON</button>
-        <input type="file" id="importFile" accept=".json" onchange="importarDB(this)">
+      <div class="file-input-wrapper" style="display: flex; gap: 8px;">
+        <div>
+          <button class="btn-warning">📁 Seleccionar archivo JSON</button>
+          <input type="file" id="importFile" accept=".json" onchange="importarDB(this)">
+        </div>
+        <button class="btn-warning" id="btnImportarDirecto">📂 Cargar desde Disco Duro</button>
       </div>
       <div id="importMsg" style="margin-top:10px"></div>
     </div>
+
     <div class="card no-print">
       <h2>🗑️ Limpiar Datos</h2>
       <p style="color:#64748b;font-size:13px">Elimina todos los datos. <strong style="color:var(--danger)">¡No se puede deshacer!</strong></p>
