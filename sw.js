@@ -1,13 +1,12 @@
 const CACHE_NAME = 'biomed-lab-v3';
 const ASSETS_TO_CACHE = [
-  './',
   './index.html',
   './styles.css',
   './db.js',
   './app.js',
   './manifest.json',
-  './assets/icon-192.png',
-  './assets/icon-512.png',
+  './icons/icon-192.png',
+  './icons/icon-512.png',
   'https://cdn.jsdelivr.net/npm/dexie@3.2.4/dist/dexie.min.js'
 ];
 

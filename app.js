@@ -238,7 +238,7 @@ const examenesDefault = {
     nombre:'Orina Todo',
     parametros:[
       {param:'Color',unidad:'-',ref:'Amarillo'},
-      {param:'Aspecto',unidad:'-',ref:'Límipido'},
+      {param:'Aspecto',unidad:'-',ref:'Límpido'},
       {param:'pH',unidad:'-',ref:'5.0-7.0'},
       {param:'Densidad',unidad:'-',ref:'1.003-1.030'},
       {param:'Glucosa',unidad:'-',ref:'Negativo'},
@@ -397,7 +397,7 @@ const examenesDefault = {
       {param:'Hepatitis C (Anti-HCV)',unidad:'-',ref:'Negativo'},
       {param:'Grupo ABO',unidad:'-',ref:'A / B / AB / O'},
       {param:'Factor Rh',unidad:'-',ref:'Positivo / Negativo'},
-      {param:'Orina: Aspecto',unidad:'-',ref:'Límipido'},
+      {param:'Orina: Aspecto',unidad:'-',ref:'Límpido'},
       {param:'Orina: Color',unidad:'-',ref:'Amarillo'},
       {param:'Orina: pH',unidad:'-',ref:'5.0-7.0'},
       {param:'Orina: Densidad',unidad:'-',ref:'1.003-1.030'},
@@ -628,9 +628,7 @@ async function deleteUser(username) {
   }
 }
 
-// CÁLCULOS AUTOMÁTICOS INTEGRADOS A CAMPOS DINÁMICOS
 function calcularIndices() {
-  // 1. Hematología
   const eritrocitosEl = document.querySelector('input[data-param="Eritrocitos"]') || document.querySelector('input[data-param="Glóbulos Rojos"]');
   const hbEl = document.querySelector('input[data-param="Hemoglobina"]');
   const htEl = document.querySelector('input[data-param="Hematocrito"]');
@@ -655,7 +653,6 @@ function calcularIndices() {
     }
   }
 
-  // 2. Colesterol y Perfil Lipídico
   const colEl = document.querySelector('input[data-param="Colesterol Total"]');
   const hdlEl = document.querySelector('input[data-param="HDL Colesterol"]') || document.querySelector('input[data-param="HDL-Colesterol"]');
   const tgEl = document.querySelector('input[data-param="Triglicéridos"]');
@@ -903,6 +900,51 @@ function esValorFueraDeRango(valor, referencia) {
   return false;
 }
 
+async function compartirInforme() {
+  if (!examenActualId) return;
+
+  const examen = await db.examenes.get(examenActualId);
+  const paciente = await db.pacientes.get(examen.paciente_id);
+  const resultados = await db.resultados.where('examen_id').equals(examenActualId).toArray();
+  const lab = labConfig.nombre || 'Biomed Lab';
+
+  let texto = `*${lab.toUpperCase()}*\n`;
+  texto += `📋 *Informe de Resultados*\n\n`;
+  texto += `*Paciente:* ${paciente?.nombre || 'N/A'}\n`;
+  texto += `*C.I.:* ${paciente?.cedula || 'N/A'}\n`;
+  texto += `*Código:* ${examen.codigo_servicio}\n`;
+  texto += `*Examen:* ${examenesConfig[examen.tipo_examen]?.nombre || examen.tipo_examen}\n`;
+  texto += `*Fecha:* ${examen.fecha}\n\n`;
+  texto += `🧪 *Resultados:*\n`;
+
+  resultados.forEach(r => {
+    texto += `• *${r.parametro}:* ${r.valor || '-'} ${r.unidad} (Ref: ${r.referencia})\n`;
+  });
+
+  if (examen.observaciones) {
+    texto += `\n*Obs:* ${examen.observaciones}`;
+  }
+
+  texto += `\n\n_Validado por: ${examen.bioanalista}_`;
+
+  const shareData = {
+    title: `Informe de Laboratorio - ${paciente?.nombre || 'Paciente'}`,
+    text: texto
+  };
+
+  if (navigator.share) {
+    try {
+      await navigator.share(shareData);
+    } catch (err) {
+      if (err.name !== 'AbortError') {
+        console.error('Error al compartir:', err);
+      }
+    }
+  } else {
+    copiarResumenTexto();
+  }
+}
+
 async function mostrarInforme(examenId){
   examenActualId = examenId;
   const examen=await db.examenes.get(examenId);
@@ -1025,8 +1067,9 @@ async function copiarResumenTexto() {
   const examen = await db.examenes.get(examenActualId);
   const paciente = await db.pacientes.get(examen.paciente_id);
   const resultados = await db.resultados.where('examen_id').equals(examenActualId).toArray();
+  const nombreLab = labConfig?.nombre || 'Biomed Lab';
   
-  let texto = `${labConfig.nombre || 'Biomed Lab'}\n`;
+  let texto = `${nombreLab}\n`;
   texto += `Paciente: ${paciente?.nombre} (CI: ${paciente?.cedula})\n`;
   texto += `Examen: ${examenesConfig[examen.tipo_examen]?.nombre}\n`;
   texto += `Fecha: ${examen.fecha} | Orden: ${examen.codigo_servicio}\n\n`;
@@ -1374,10 +1417,16 @@ async function limpiarDB(){
 
 function calcularEdad(fechaNac){
   if(!fechaNac) return '?';
-  const nac = new Date(fechaNac);
+  const partes = fechaNac.split('-');
+  if(partes.length !== 3) return '?';
+  const nac = new Date(parseInt(partes[0]), parseInt(partes[1]) - 1, parseInt(partes[2]));
   if(isNaN(nac.getTime())) return '?';
-  const diff = Date.now() - nac.getTime();
-  const edad = Math.floor(diff / (1000 * 60 * 60 * 24 * 365.25));
+  const hoy = new Date();
+  let edad = hoy.getFullYear() - nac.getFullYear();
+  const m = hoy.getMonth() - nac.getMonth();
+  if (m < 0 || (m === 0 && hoy.getDate() < nac.getDate())) {
+    edad--;
+  }
   return edad >= 0 ? edad : '?';
 }
 
@@ -1393,7 +1442,6 @@ function obtenerEdadPaciente(paciente) {
   return '?';
 }
 
-// Inicialización de escuchadores de eventos y arranque de aplicación
 document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('btnExportarDirecto')?.addEventListener('click', guardarRespaldoEnDisco);
   document.getElementById('btnImportarDirecto')?.addEventListener('click', cargarRespaldoDesdeDisco);

@@ -3,7 +3,7 @@
   "name": "Biomed Lab - Sistema de Gestión",
   "icons": [
     {
-      "src": "./assets/icon-192.png",
+      "src": "./icons/icon-192.png",
       "type": "image/png",
       "sizes": "192x192"
     },
