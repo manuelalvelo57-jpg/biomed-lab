@@ -4,9 +4,9 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-  <!-- Icono vinculado antes de la etiqueta title -->
-  <link rel="icon" type="image/png" href="icons/icon-192.png">
-  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <!-- Iconos vinculados correctamente a la carpeta icons/ -->
+  <link rel="icon" type="image/png" sizes="32x32" href="./icons/icon-192.png">
+  <link rel="apple-touch-icon" href="./icons/icon-192.png">
 
   <meta name="theme-color" content="#0f3460">
   <title>Biomed Lab</title>
@@ -60,36 +60,41 @@
     </div>
 
     <div class="card hidden no-print" id="registroPaciente">
-      <h2>📌 Registrar Paciente Nuevo</h2>
-      <div class="form-group" style="margin-bottom: 10px;">
-        <label style="cursor: pointer;">
-          <input type="checkbox" id="esMenor" onchange="toggleMenorSinCedula()"> 
-          ¿Es menor de edad sin cédula?
-        </label>
-      </div>
-      <div class="grid-2">
-        <input type="text" id="cedula" placeholder="Cédula / Documento *">
-        <input type="text" id="nombre" placeholder="Nombre completo *">
-      </div>
-      <div class="grid-4" style="margin-top: 10px;">
-        <div style="display: flex; gap: 4px;">
-          <input type="number" id="edad" placeholder="Edad" min="0" max="120" oninput="actualizarFechaPorEdad()" style="flex: 2;">
-          <select id="unidadEdad" style="flex: 1;">
-            <option value="años">Años</option>
-            <option value="meses">Meses</option>
-            <option value="días">Días</option>
-          </select>
+      <h2>📌 Registrar / Editar Paciente</h2>
+      <form id="formPaciente" onsubmit="guardarPaciente(event)">
+        <div class="form-group" style="margin-bottom: 10px;">
+          <label style="cursor: pointer;">
+            <input type="checkbox" id="esMenor" onchange="toggleMenorSinCedula()"> 
+            ¿Es menor de edad sin cédula?
+          </label>
         </div>
-        <input type="date" id="fechaNac" onchange="actualizarEdadPorFecha()">
-        <select id="sexo">
-          <option value="">Sexo</option>
-          <option value="F">Femenino</option>
-          <option value="M">Masculino</option>
-        </select>
-        <input type="text" id="telefono" placeholder="Teléfono">
-      </div>
-      <input type="text" id="direccion" placeholder="Dirección (opcional)" style="margin-top: 10px;">
-      <button class="btn-success" onclick="guardarPaciente()" style="margin-top: 10px;">💾 Guardar Paciente</button>
+        <div class="grid-2">
+          <input type="text" id="cedula" placeholder="Cédula / Documento *">
+          <input type="text" id="nombre" placeholder="Nombre completo *">
+        </div>
+        <div class="grid-4" style="margin-top: 10px;">
+          <div style="display: flex; gap: 4px;">
+            <input type="number" id="edad" placeholder="Edad" min="0" max="120" oninput="actualizarFechaPorEdad()" style="flex: 2;">
+            <select id="unidadEdad" style="flex: 1;">
+              <option value="años">Años</option>
+              <option value="meses">Meses</option>
+              <option value="días">Días</option>
+            </select>
+          </div>
+          <input type="date" id="fechaNac" onchange="actualizarEdadPorFecha()">
+          <select id="sexo">
+            <option value="">Sexo</option>
+            <option value="F">Femenino</option>
+            <option value="M">Masculino</option>
+          </select>
+          <input type="text" id="telefono" placeholder="Teléfono">
+        </div>
+        <input type="text" id="direccion" placeholder="Dirección (opcional)" style="margin-top: 10px;">
+        <div style="margin-top: 12px; display: flex; gap: 8px;">
+          <button type="submit" class="btn-success" id="btnGuardarPaciente">💾 Guardar Paciente</button>
+          <button type="button" class="btn-outline" onclick="limpiarFormularioPaciente()">❌ Cancelar / Limpiar</button>
+        </div>
+      </form>
     </div>
 
     <div class="card hidden no-print" id="entradaResultados">

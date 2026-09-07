@@ -4,6 +4,7 @@ let examenActualId = null;
 let examenesConfig = {};
 let labConfig = {};
 let firmaBase64 = '';
+let pacienteEditandoId = null;
 
 const parametrosHematologiaBase = [
   {param:'Hemoglobina',unidad:'g/dL',ref:'H:14.0-18.0 / M:12.0-16.0'},
@@ -706,7 +707,7 @@ async function buscarPaciente(){
   const div=document.getElementById('resultadosBusqueda');
   if(q.length<2){div.innerHTML='';return;}
   const pacientes=await db.pacientes.filter(p=>(p.cedula&&p.cedula.toLowerCase().includes(q))||(p.nombre&&p.nombre.toLowerCase().includes(q))).toArray();
-  div.innerHTML=pacientes.map(p=>`<div class="search-result" onclick="seleccionarPaciente(${p.id})"><strong>${p.nombre}</strong> — C.I. ${p.cedula}<br><small style="color:#64748b">Tel: ${p.telefono||'N/A'} | Edad: ${obtenerEdadPaciente(p)}</small></div>`).join('');
+  div.innerHTML=pacientes.map(p=>`<div class="search-result" onclick="seleccionarPaciente(${p.id})"><strong>${p.nombre}</strong> — C.I. ${p.cedula}<br><small style="color:#64748b">Tel: ${p.telefono||'N/A'} | Edad: ${obtenerEdadPaciente(p)}</small> <button class="btn-sm btn-outline" style="margin-left:10px" onclick="event.stopPropagation(); editarPaciente(${p.id})">✏️ Editar</button></div>`).join('');
 }
 
 async function seleccionarPaciente(id){
@@ -726,7 +727,10 @@ async function seleccionarPaciente(id){
   await generarCodigoServicio();
 }
 
-function toggleRegistro(){document.getElementById('registroPaciente').classList.toggle('hidden');}
+function toggleRegistro(){
+  limpiarFormularioPaciente();
+  document.getElementById('registroPaciente').classList.toggle('hidden');
+}
 
 function toggleMenorSinCedula() {
   const esMenor = document.getElementById('esMenor').checked;
@@ -761,7 +765,42 @@ function actualizarFechaPorEdad(){
   }
 }
 
-async function guardarPaciente() {
+async function editarPaciente(id) {
+  try {
+    const paciente = await db.pacientes.get(id);
+    if (!paciente) {
+      alert("Paciente no encontrado");
+      return;
+    }
+
+    document.getElementById('cedula').value = paciente.cedula || '';
+    document.getElementById('nombre').value = paciente.nombre || '';
+    document.getElementById('edad').value = paciente.edad !== null && paciente.edad !== undefined ? paciente.edad : '';
+    if(document.getElementById('unidadEdad')) document.getElementById('unidadEdad').value = paciente.unidad_edad || 'años';
+    if(document.getElementById('esMenor')) document.getElementById('esMenor').checked = !!paciente.es_menor;
+    if(document.getElementById('fechaNac')) document.getElementById('fechaNac').value = paciente.fecha_nacimiento || '';
+    document.getElementById('sexo').value = paciente.sexo || '';
+    document.getElementById('telefono').value = paciente.telefono || '';
+    document.getElementById('direccion').value = paciente.direccion || '';
+
+    pacienteEditandoId = id;
+
+    const btnGuardar = document.getElementById('btnGuardarPaciente');
+    if (btnGuardar) {
+      btnGuardar.textContent = "🔄 Actualizar Paciente";
+    }
+
+    document.getElementById('registroPaciente').classList.remove('hidden');
+    document.getElementById('registroPaciente').scrollIntoView({ behavior: 'smooth' });
+
+  } catch (error) {
+    console.error("Error al cargar paciente para edición:", error);
+  }
+}
+
+async function guardarPaciente(event) {
+  if (event) event.preventDefault();
+
   const cedula = document.getElementById('cedula').value.trim();
   const nombre = document.getElementById('nombre').value.trim();
   const edadVal = document.getElementById('edad').value.trim();
@@ -778,13 +817,7 @@ async function guardarPaciente() {
     return;
   }
 
-  const existe = await db.pacientes.where('cedula').equals(cedula).first();
-  if (existe) {
-    alert('Ya existe un paciente registrado con este documento/código.');
-    return;
-  }
-
-  const data = {
+  const datosPaciente = {
     cedula: cedula,
     nombre: nombre,
     edad: edadVal !== '' ? parseInt(edadVal) : null,
@@ -792,22 +825,57 @@ async function guardarPaciente() {
     es_menor: esMenor,
     fecha_nacimiento: document.getElementById('fechaNac')?.value || null,
     sexo: document.getElementById('sexo').value,
-    telefono: document.getElementById('telefono').value,
-    direccion: document.getElementById('direccion').value
+    telefono: document.getElementById('telefono').value.trim(),
+    direccion: document.getElementById('direccion').value.trim()
   };
 
-  const id = await db.pacientes.add(data);
-  seleccionarPaciente(id);
+  try {
+    if (pacienteEditandoId) {
+      const existe = await db.pacientes.where('cedula').equals(cedula).first();
+      if (existe && existe.id !== pacienteEditandoId) {
+        alert('Ya existe otro paciente registrado con esta cédula/código.');
+        return;
+      }
+      await db.pacientes.update(pacienteEditandoId, datosPaciente);
+      alert("✅ Datos del paciente actualizados correctamente");
+      seleccionarPaciente(pacienteEditandoId);
+    } else {
+      const existe = await db.pacientes.where('cedula').equals(cedula).first();
+      if (existe) {
+        alert('Ya existe un paciente registrado con este documento/código.');
+        return;
+      }
+      const id = await db.pacientes.add(datosPaciente);
+      alert("✅ Paciente registrado con éxito");
+      seleccionarPaciente(id);
+    }
 
+    limpiarFormularioPaciente();
+
+  } catch (error) {
+    console.error("Error al guardar paciente:", error);
+    alert("❌ Error al guardar los datos del paciente");
+  }
+}
+
+function limpiarFormularioPaciente() {
   document.getElementById('cedula').value = '';
   document.getElementById('cedula').readOnly = false;
   if(document.getElementById('esMenor')) document.getElementById('esMenor').checked = false;
   document.getElementById('nombre').value = '';
   document.getElementById('edad').value = '';
+  if(document.getElementById('unidadEdad')) document.getElementById('unidadEdad').value = 'años';
   if(document.getElementById('fechaNac')) document.getElementById('fechaNac').value = '';
   document.getElementById('sexo').value = '';
   document.getElementById('telefono').value = '';
   document.getElementById('direccion').value = '';
+  
+  pacienteEditandoId = null;
+  
+  const btnGuardar = document.getElementById('btnGuardarPaciente');
+  if (btnGuardar) {
+    btnGuardar.textContent = "💾 Guardar Paciente";
+  }
 }
 
 async function generarCodigoServicio(){
