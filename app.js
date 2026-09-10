@@ -9,6 +9,7 @@ let pacienteEditandoId = null;
 const parametrosHematologiaBase = [
   {param:'Hemoglobina',unidad:'g/dL',ref:'H:14.0-18.0 / M:12.0-16.0'},
   {param:'Hematocrito',unidad:'%',ref:'H:42-52 / M:36-46'},
+  {param:'Eritrocitos',unidad:'x10⁶/µL',ref:'4.0-5.5'},
   {param:'Leucocitos',unidad:'x10³/µL',ref:'4.5-11.0'},
   {param:'Plaquetas',unidad:'x10³/µL',ref:'150-450'},
   {param:'Neutrófilos',unidad:'%',ref:'40-70'},
