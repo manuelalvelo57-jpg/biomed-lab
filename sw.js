@@ -1,4 +1,4 @@
-const CACHE_NAME = 'biomed-lab-v3';
+const CACHE_NAME = 'biomed-lab';
 const ASSETS_TO_CACHE = [
   './index.html',
   './styles.css',
