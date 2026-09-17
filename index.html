@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-  <!-- Iconos vinculados correctamente a la carpeta icons/ -->
+  <!-- Iconos vinculados a la carpeta icons/ -->
   <link rel="icon" type="image/png" sizes="32x32" href="./icons/icon-192.png">
   <link rel="apple-touch-icon" href="./icons/icon-192.png">
 
@@ -12,7 +12,7 @@
   <title>Biomed Lab</title>
 
   <link rel="manifest" href="./manifest.json">
-  <link rel="stylesheet" href="./styles.css">
+  <link rel="stylesheet" href="./styles.css?v=2.1">
   <script src="https://cdn.jsdelivr.net/npm/dexie@3.2.4/dist/dexie.min.js"></script>
 </head>
 <body>
@@ -245,6 +245,16 @@
       <div id="firmaPreview" style="margin-top:8px"></div>
       <button class="btn-primary" onclick="guardarConfigLab()">💾 Guardar Configuración</button>
     </div>
+	
+    <div style="margin-top: 20px; padding: 12px; background: #fff1f2; border: 1px solid #fecdd3; border-radius: 8px;">
+      <h4 style="margin:0 0 6px 0; color:#9f1239;">🔄 Limpieza de Memoria Caché</h4>
+      <p style="margin:0 0 10px 0; font-size:12px; color:#4c0519;">
+        Si notas que los cambios de versión no aparecen en esta computadora, forzar la actualización descargará la versión más reciente sin borrar los datos guardados.
+      </p>
+      <button class="btn-danger btn-sm" onclick="fuerzaActualizarPWA()">
+        ⚡ Limpiar Caché y Recargar
+      </button>
+    </div>
   </div>
 
   <div id="tab-respaldo" class="tab-content">
@@ -289,7 +299,64 @@
   </div>
 </div>
 
-<script src="./db.js"></script>
-<script src="./app.js"></script>
+<script src="./db.js?v=2.1"></script>
+<script src="./app.js?v=2.1"></script>
+<script>
+// Alias para la función logout exigida por el HTML
+function logout() {
+  cerrarSesion();
+}
+
+// Guardar o actualizar paciente evitando consultas duplicadas
+async function guardarPacienteModal(datosPaciente) {
+  const { id, cedula, nombre, sexo, fechaNacimiento } = datosPaciente;
+
+  if (!cedula || !nombre) {
+    throw new Error('La cédula y el nombre son obligatorios.');
+  }
+
+  const pacienteExistente = await db.pacientes.where('cedula').equals(cedula).first();
+  if (pacienteExistente && pacienteExistente.id !== id) {
+    throw new Error('Ya existe un paciente registrado con esta cédula.');
+  }
+
+  if (id) {
+    await db.pacientes.update(id, { cedula, nombre, sexo, fechaNacimiento });
+    return id;
+  } else {
+    return await db.pacientes.add({
+      cedula,
+      nombre,
+      sexo,
+      fechaNacimiento,
+      fechaRegistro: new Date().toISOString()
+    });
+  }
+}
+
+// Cargar historial filtrado por rango de fechas
+async function cargarHistorialFechas(fechaInicio, fechaFin) {
+  const inicioISO = new Date(fechaInicio + 'T00:00:00.000Z').toISOString();
+  const finISO = new Date(fechaFin + 'T23:59:59.999Z').toISOString();
+
+  return await db.ordenes
+    .where('fecha')
+    .between(inicioISO, finISO, true, true)
+    .reverse()
+    .toArray();
+}
+
+// Cerrar sesión
+function cerrarSesion() {
+  localStorage.removeItem('userToken');
+  sessionStorage.clear();
+
+  document.body.innerHTML = '<div style="text-align:center; padding:50px;">Cerrando sesión...</div>';
+  
+  setTimeout(() => {
+    window.location.reload();
+  }, 300);
+}
+</script>
 </body>
 </html>

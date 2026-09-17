@@ -455,9 +455,30 @@ const examenesDefault = {
 if('serviceWorker' in navigator){
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('./sw.js')
-      .then(r => console.log('SW ok:', r.scope))
+      .then(reg => {
+        console.log('SW ok:', reg.scope);
+        reg.update();
+      })
       .catch(e => console.log('SW error:', e));
   });
+}
+
+async function fuerzaActualizarPWA() {
+  if (confirm('¿Deseas forzar la actualización de la aplicación?')) {
+    if ('serviceWorker' in navigator) {
+      const registrations = await navigator.serviceWorker.getRegistrations();
+      for (let registration of registrations) {
+        await registration.unregister();
+      }
+    }
+    if ('caches' in window) {
+      const names = await caches.keys();
+      for (let name of names) {
+        await caches.delete(name);
+      }
+    }
+    window.location.reload(true);
+  }
 }
 
 async function solicitarAlmacenamientoPersistente() {
@@ -949,23 +970,49 @@ async function guardarExamen(){
       });
     }
   }
-  mostrarInforme(examenId);
-  cargarHistorial();
+  await mostrarInforme(examenId);
+  await cargarHistorial();
   alert('✔ Examen guardado. Código: '+codigo);
 }
 
-function esValorFueraDeRango(valor, referencia) {
-  const valNum = parseFloat(valor);
+function esValorFueraDeRango(valorStr, rangoStr, sexoPaciente = '') {
+  if (!valorStr || !rangoStr) return false;
+
+  const valNum = parseFloat(String(valorStr).replace(',', '.'));
   if (isNaN(valNum)) return false;
-  
-  const partes = referencia.match(/^([\d.]+)\s*-\s*([\d.]+)$/);
-  if (partes) {
-    const min = parseFloat(partes[1]);
-    const max = parseFloat(partes[2]);
+
+  let rangoTarget = rangoStr.trim();
+
+  if (rangoTarget.includes('/')) {
+    const partes = rangoTarget.split('/');
+    const sexoNormalizado = String(sexoPaciente).trim().toUpperCase();
+    const sexoPrefix = (sexoNormalizado === 'M' || sexoNormalizado === 'MASCULINO') ? 'H:' : 'M:';
+    
+    const coincidencia = partes.find(p => p.trim().startsWith(sexoPrefix));
+    if (coincidencia) {
+      rangoTarget = coincidencia.replace(sexoPrefix, '').trim();
+    }
+  }
+
+  if (rangoTarget.startsWith('<')) {
+    const max = parseFloat(rangoTarget.replace('<', '').trim());
+    return !isNaN(max) && valNum >= max;
+  }
+
+  if (rangoTarget.startsWith('>')) {
+    const min = parseFloat(rangoTarget.replace('>', '').trim());
+    return !isNaN(min) && valNum <= min;
+  }
+
+  if (rangoTarget.includes('-')) {
+    const [minStr, maxStr] = rangoTarget.split('-');
+    const min = parseFloat(minStr.trim());
+    const max = parseFloat(maxStr.trim());
     if (!isNaN(min) && !isNaN(max)) {
       return valNum < min || valNum > max;
     }
   }
+
   return false;
 }
 
@@ -1054,7 +1101,7 @@ async function mostrarInforme(examenId){
         </thead>
         <tbody>
           ${resultados.map(r=>{
-            const fueraRango = esValorFueraDeRango(r.valor, r.referencia);
+            const fueraRango = esValorFueraDeRango(r.valor, r.referencia, paciente?.sexo);
             const claseResultado = fueraRango ? 'out-of-range' : '';
             return `
             <tr>
@@ -1511,8 +1558,14 @@ function obtenerEdadPaciente(paciente) {
   return '?';
 }
 
-document.addEventListener('DOMContentLoaded', () => {
+function bootApp() {
   document.getElementById('btnExportarDirecto')?.addEventListener('click', guardarRespaldoEnDisco);
   document.getElementById('btnImportarDirecto')?.addEventListener('click', cargarRespaldoDesdeDisco);
   init();
-});
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', bootApp);
+} else {
+  bootApp();
+}
