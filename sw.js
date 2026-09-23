@@ -1,4 +1,4 @@
-const CACHE_NAME = 'biomed-lab-v2.1';
+const CACHE_NAME = 'biomed-lab-v2.3';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
@@ -11,7 +11,6 @@ const ASSETS_TO_CACHE = [
   'https://cdn.jsdelivr.net/npm/dexie@3.2.4/dist/dexie.min.js'
 ];
 
-// Instalación y almacenamiento de assets clave
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
@@ -21,7 +20,6 @@ self.addEventListener('install', (event) => {
   self.skipWaiting();
 });
 
-// Activación y limpieza de versiones viejas del caché
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((keys) => {
@@ -33,21 +31,30 @@ self.addEventListener('activate', (event) => {
   self.clients.claim();
 });
 
-// Permite forzar la actualización o limpieza desde la aplicación frontend
 self.addEventListener('message', (event) => {
   if (event.data && event.data.action === 'skipWaiting') {
     self.skipWaiting();
   }
 });
 
-// Estrategia Network-First con fallback a Cache para soporte Offline
 self.addEventListener('fetch', (event) => {
-  if (event.request.method !== 'GET') return;
+  const url = new URL(event.request.url);
 
+  // 1. Filtrar esquemas no soportados por Cache API (chrome-extension, file, etc.)
+  if (!url.protocol.startsWith('http')) {
+    return;
+  }
+
+  // 2. Solo procesar e intentar cachear peticiones GET
+  if (event.request.method !== 'GET') {
+    return;
+  }
+
+  // 3. Estrategia Network First (intenta red, si falla usa el caché/offline)
   event.respondWith(
     fetch(event.request)
       .then((networkResponse) => {
-        // Valida respuestas válidas (status 200) o respuestas opacas de CDN (status 0)
+        // Validar que sea una respuesta exitosa o tipo 'opaque' (para CDNs externas como jsDelivr)
         if (
           networkResponse &&
           (networkResponse.status === 200 || networkResponse.type === 'opaque')
@@ -60,11 +67,12 @@ self.addEventListener('fetch', (event) => {
         return networkResponse;
       })
       .catch(() => {
-        // Si falla la red (modo Offline), recupera desde el caché
+        // Si no hay red, buscar en el caché
         return caches.match(event.request).then((cachedResponse) => {
           if (cachedResponse) {
             return cachedResponse;
           }
+          // Si es navegación de página y no hay caché exacto, sirve el index.html
           if (event.request.mode === 'navigate') {
             return caches.match('./index.html');
           }

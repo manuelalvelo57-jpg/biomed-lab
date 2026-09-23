@@ -218,10 +218,64 @@ tr:hover { background: #f8fafc; }
 /* Resaltado de valores fuera de rango */
 .out-of-range { font-weight: bold; text-decoration: underline; color: #b91c1c; background-color: #fef2f2; padding: 1px 4px; border-radius: 3px; }
 
+/* Ajustes a la modal para previsualización elegante */
+.modal.print-modal {
+  max-width: 800px;
+  width: 95%;
+  background: #ffffff;
+  padding: 24px;
+}
+
+/* Control estricto de impresión (@media print) */
 @media print {
-  .no-print, .tabs, header, button { display: none !important; }
-  body { background: white; padding: 0; margin: 0; }
-  .card { box-shadow: none; border: none; padding: 0; margin: 0; }
-  .container { max-width: 100%; width: 100%; margin: 0; }
-  @page { margin: 1cm; }
+  .no-print, 
+  .tabs, 
+  header, 
+  button, 
+  .close-modal,
+  .modal-overlay:not(.active) { 
+    display: none !important; 
+  }
+
+  body { 
+    background: #ffffff !important; 
+    padding: 0 !important; 
+    margin: 0 !important; 
+  }
+
+  /* Si la modal está activa (imprimiendo desde Historial) */
+  .modal-overlay.active {
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100% !important;
+    height: auto !important;
+    background: white !important;
+  }
+
+  .modal.print-modal {
+    box-shadow: none !important;
+    border: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  .card { 
+    box-shadow: none !important; 
+    border: none !important; 
+    padding: 0 !important; 
+    margin: 0 !important; 
+  }
+
+  .container { 
+    max-width: 100% !important; 
+    width: 100% !important; 
+    margin: 0 !important; 
+  }
+
+  @page { 
+    margin: 1cm; 
+  }
 }

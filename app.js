@@ -80,8 +80,6 @@ const examenesDefault = {
       {param:'Proteínas Totales',unidad:'g/dL',ref:'6.0-8.3'},
       {param:'Albúmina',unidad:'g/dL',ref:'3.5-5.5'},
       {param:'Globulina',unidad:'g/dL',ref:'2.0-3.5'},
-      {param:'Calcio',unidad:'mg/dL',ref:'8.5-10.5'},
-      {param:'Hierro Sérico',unidad:'µg/dL',ref:'60-170'},
       {param:'TGO (AST)',unidad:'U/L',ref:'0-35'},
       {param:'TGP (ALT)',unidad:'U/L',ref:'0-45'},
       {param:'Fosfatasa Alcalina (ALP)',unidad:'U/L',ref:'44-147'},
@@ -481,73 +479,131 @@ async function fuerzaActualizarPWA() {
   }
 }
 
-async function solicitarAlmacenamientoPersistente() {
-  if (navigator.storage && navigator.storage.persist) {
-    await navigator.storage.persist();
+async function restablecerAdminDefecto() {
+  try {
+    const salt = generateSalt();
+    const defaultPass = await hashPasswordWithSalt('admin123', salt);
+    await db.users.put({ username: 'admin', password: defaultPass, salt: salt, role: 'admin' });
+    alert('✅ Usuario "admin" con contraseña "admin123" creado o reestablecido correctamente.');
+    if(document.getElementById('login-user')) document.getElementById('login-user').value = 'admin';
+    if(document.getElementById('login-pass')) document.getElementById('login-pass').value = 'admin123';
+  } catch(e) {
+    alert('Error al restablecer admin: ' + e.message);
   }
-}
-
-async function hashPassword(password) {
-  const encoder = new TextEncoder();
-  const data = encoder.encode(password);
-  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-  const hashArray = Array.from(new Uint8Array(hashBuffer));
-  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
 async function init(){
-  await solicitarAlmacenamientoPersistente();
+  try {
+    await solicitarAlmacenamientoPersistente();
+    await initDefaultUser();
 
-  const adminUser = await db.users.get('admin');
-  if(!adminUser) {
-    const defaultPass = await hashPassword('admin123');
-    await db.users.add({ username: 'admin', password: defaultPass, role: 'admin' });
-  }
-
-  const saved = await db.config.get('examenes');
-  if(saved){ 
-    examenesConfig = saved.valor; 
-  } else {
-    examenesConfig = JSON.parse(JSON.stringify(examenesDefault));
-    await db.config.put({clave:'examenes', valor:examenesConfig});
-  }
-  
-  const savedLab = await db.config.get('laboratorio');
-  if(savedLab){
-    labConfig = savedLab.valor;
-    if(document.getElementById('labNombre')) document.getElementById('labNombre').value = labConfig.nombre || '';
-    if(document.getElementById('labBioanalista')) document.getElementById('labBioanalista').value = labConfig.bioanalista || '';
-    if(document.getElementById('labDireccion')) document.getElementById('labDireccion').value = labConfig.direccion || '';
-    if(document.getElementById('labTelefono')) document.getElementById('labTelefono').value = labConfig.telefono || '';
-    if(document.getElementById('labRif')) document.getElementById('labRif').value = labConfig.rif || '';
-    firmaBase64 = labConfig.firma || '';
-    if(firmaBase64 && document.getElementById('firmaPreview')){
-      document.getElementById('firmaPreview').innerHTML = `<img src="${firmaBase64}" style="max-height:60px;border:1px solid #ccc;padding:2px;">`;
+    const saved = await db.config.get('examenes');
+    if(saved){ 
+      examenesConfig = saved.valor; 
+    } else {
+      examenesConfig = JSON.parse(JSON.stringify(examenesDefault));
+      await db.config.put({clave:'examenes', valor:examenesConfig});
     }
+    
+    const savedLab = await db.config.get('laboratorio');
+    if(savedLab){
+      labConfig = savedLab.valor;
+      if(document.getElementById('labNombre')) document.getElementById('labNombre').value = labConfig.nombre || '';
+      if(document.getElementById('labBioanalista')) document.getElementById('labBioanalista').value = labConfig.bioanalista || '';
+      if(document.getElementById('labDireccion')) document.getElementById('labDireccion').value = labConfig.direccion || '';
+      if(document.getElementById('labTelefono')) document.getElementById('labTelefono').value = labConfig.telefono || '';
+      if(document.getElementById('labRif')) document.getElementById('labRif').value = labConfig.rif || '';
+      firmaBase64 = labConfig.firma || '';
+      if(firmaBase64 && document.getElementById('firmaPreview')){
+        document.getElementById('firmaPreview').innerHTML = `<img src="${firmaBase64}" style="max-height:60px;border:1px solid #ccc;padding:2px;">`;
+      }
+    }
+
+    checkSession();
+    cargarSelectExamenes();
+    cargarHistorial();
+    renderizarConfigExamenes();
+  } catch (err) {
+    console.error("Error al inicializar:", err);
+  }
+}
+
+// ==========================================
+// SEGURIDAD, AUTENTICACIÓN Y BLOQUEO DE INTENTOS
+// ==========================================
+function esContrasenaSegura(pass) {
+  const minLongitud = pass.length >= 8;
+  const tieneNumero = /\d/.test(pass);
+  const tieneLetra = /[a-zA-Z]/.test(pass);
+  return minLongitud && tieneNumero && tieneLetra;
+}
+
+let intentosFallidos = 0;
+let tiempoBloqueo = null;
+
+function registrarIntentoFallido() {
+  intentosFallidos++;
+  if (intentosFallidos >= 5) {
+    tiempoBloqueo = Date.now() + 60000;
+    alert("Demasiados intentos fallidos. Inicio de sesión bloqueado por 1 minuto.");
+  } else {
+    alert(`Credenciales incorrectas. Intentos restantes: ${5 - intentosFallidos}`);
+  }
+}
+
+async function procesarLogin(usernameInput, passwordInput) {
+  if (tiempoBloqueo && Date.now() < tiempoBloqueo) {
+    const segundosRestantes = Math.ceil((tiempoBloqueo - Date.now()) / 1000);
+    alert(`Acceso bloqueado por seguridad. Intenta de nuevo en ${segundosRestantes} segundos.`);
+    return false;
   }
 
-  checkSession();
-  cargarSelectExamenes();
-  cargarHistorial();
-  renderizarConfigExamenes();
+  try {
+    let userObj = await db.users.get(usernameInput);
+
+    if (!userObj && usernameInput === 'admin' && passwordInput === 'admin123') {
+      const salt = generateSalt();
+      const hashed = await hashPasswordWithSalt('admin123', salt);
+      userObj = { username: 'admin', password: hashed, salt: salt, role: 'admin' };
+      await db.users.put(userObj);
+    }
+
+    if (!userObj) {
+      registrarIntentoFallido();
+      return false;
+    }
+
+    const hashIntent = await hashPasswordWithSalt(passwordInput, userObj.salt || '');
+
+    if (userObj.password === hashIntent) {
+      intentosFallidos = 0;
+      tiempoBloqueo = null;
+      
+      currentUser = { username: userObj.username, role: userObj.role };
+      sessionStorage.setItem('biomed_session', JSON.stringify(currentUser));
+      
+      iniciarTimerInactividad();
+      applyPermissions();
+      return true;
+    } else {
+      registrarIntentoFallido();
+      return false;
+    }
+  } catch (err) {
+    console.error("Error durante la autenticación:", err);
+    return false;
+  }
 }
 
 document.getElementById('login-form')?.addEventListener('submit', async (e) => {
   e.preventDefault();
   const userVal = document.getElementById('login-user').value.trim();
   const passVal = document.getElementById('login-pass').value;
-  const hash = await hashPassword(passVal);
 
-  const userObj = await db.users.get(userVal);
-  if(userObj && userObj.password === hash) {
-    currentUser = { username: userObj.username, role: userObj.role };
-    sessionStorage.setItem('biomed_session', JSON.stringify(currentUser));
-    document.getElementById('login-error').style.display = 'none';
-    applyPermissions();
-  } else {
+  const loginExitoso = await procesarLogin(userVal, passVal);
+  if (loginExitoso) {
     const err = document.getElementById('login-error');
-    err.textContent = 'Credenciales inválidas';
-    err.style.display = 'block';
+    if (err) err.style.display = 'none';
   }
 });
 
@@ -555,18 +611,29 @@ function checkSession() {
   const session = sessionStorage.getItem('biomed_session');
   if(session) {
     currentUser = JSON.parse(session);
+    iniciarTimerInactividad();
     applyPermissions();
   } else {
-    document.getElementById('login-overlay').style.display = 'flex';
+    const overlay = document.getElementById('login-overlay');
+    if (overlay) overlay.style.display = 'flex';
   }
 }
 
 function applyPermissions() {
-  document.getElementById('login-overlay').style.display = 'none';
-  document.getElementById('user-name-text').textContent = `${currentUser.username} (${currentUser.role.toUpperCase()})`;
-  document.getElementById('my-username').value = currentUser.username;
+  const overlay = document.getElementById('login-overlay');
+  if (overlay) overlay.style.display = 'none';
 
-  if(currentUser.role === 'admin') {
+  const userText = document.getElementById('user-name-text');
+  if (userText && currentUser) {
+    userText.textContent = `${currentUser.username} (${currentUser.role.toUpperCase()})`;
+  }
+
+  const myUserInp = document.getElementById('my-username');
+  if (myUserInp && currentUser) {
+    myUserInp.value = currentUser.username;
+  }
+
+  if(currentUser && currentUser.role === 'admin') {
     document.querySelectorAll('.admin-only').forEach(el => el.style.display = 'block');
     loadUsersTable();
   } else {
@@ -590,8 +657,14 @@ document.getElementById('change-pass-form')?.addEventListener('submit', async (e
     return;
   }
 
+  if (!esContrasenaSegura(newPass)) {
+    alert('La contraseña debe tener al menos 8 caracteres, incluir letras y al menos un número.');
+    return;
+  }
+
   const oldUsername = currentUser.username;
-  const hashed = await hashPassword(newPass);
+  const newSalt = generateSalt();
+  const hashed = await hashPasswordWithSalt(newPass, newSalt);
 
   if(newUsername !== oldUsername) {
     const exists = await db.users.get(newUsername);
@@ -605,6 +678,7 @@ document.getElementById('change-pass-form')?.addEventListener('submit', async (e
   await db.users.put({
     username: newUsername,
     password: hashed,
+    salt: newSalt,
     role: currentUser.role
   });
 
@@ -635,11 +709,17 @@ document.getElementById('create-user-form')?.addEventListener('submit', async (e
   const pass = document.getElementById('new-user-pass').value;
   const role = document.getElementById('new-user-role').value;
 
+  if (!esContrasenaSegura(pass)) {
+    alert('La contraseña debe tener al menos 8 caracteres, incluir letras y números.');
+    return;
+  }
+
   const exists = await db.users.get(name);
   if(exists) { alert('El usuario ya existe'); return; }
 
-  const hash = await hashPassword(pass);
-  await db.users.add({ username: name, password: hash, role: role });
+  const salt = generateSalt();
+  const hash = await hashPasswordWithSalt(pass, salt);
+  await db.users.add({ username: name, password: hash, salt: salt, role: role });
   document.getElementById('create-user-form').reset();
   loadUsersTable();
 });
@@ -651,6 +731,45 @@ async function deleteUser(username) {
   }
 }
 
+// ==========================================
+// CONTROL DE INACTIVIDAD
+// ==========================================
+let timerInactividad;
+const TIEMPO_MAXIMO_INACTIVIDAD = 15 * 60 * 1000;
+
+function reiniciarTimerInactividad() {
+  if (!sessionStorage.getItem('biomed_session')) return;
+
+  clearTimeout(timerInactividad);
+  timerInactividad = setTimeout(() => {
+    cerrarSesionPorInactividad();
+  }, TIEMPO_MAXIMO_INACTIVIDAD);
+}
+
+function iniciarTimerInactividad() {
+  window.addEventListener('mousemove', reiniciarTimerInactividad);
+  window.addEventListener('keydown', reiniciarTimerInactividad);
+  window.addEventListener('click', reiniciarTimerInactividad);
+  window.addEventListener('scroll', reiniciarTimerInactividad);
+
+  reiniciarTimerInactividad();
+}
+
+function cerrarSesionPorInactividad() {
+  sessionStorage.removeItem('biomed_session');
+  
+  window.removeEventListener('mousemove', reiniciarTimerInactividad);
+  window.removeEventListener('keydown', reiniciarTimerInactividad);
+  window.removeEventListener('click', reiniciarTimerInactividad);
+  window.removeEventListener('scroll', reiniciarTimerInactividad);
+
+  alert("Tu sesión ha expirado automáticamente por inactividad (15 minutos).");
+  location.reload();
+}
+
+// ==========================================
+// CÁLCULOS Y OPERACIONES DE LABORATORIO
+// ==========================================
 function calcularIndices() {
   const eritrocitosEl = document.querySelector('input[data-param="Eritrocitos"]') || document.querySelector('input[data-param="Glóbulos Rojos"]');
   const hbEl = document.querySelector('input[data-param="Hemoglobina"]');
@@ -975,47 +1094,6 @@ async function guardarExamen(){
   alert('✔ Examen guardado. Código: '+codigo);
 }
 
-function esValorFueraDeRango(valorStr, rangoStr, sexoPaciente = '') {
-  if (!valorStr || !rangoStr) return false;
-
-  const valNum = parseFloat(String(valorStr).replace(',', '.'));
-  if (isNaN(valNum)) return false;
-
-  let rangoTarget = rangoStr.trim();
-
-  if (rangoTarget.includes('/')) {
-    const partes = rangoTarget.split('/');
-    const sexoNormalizado = String(sexoPaciente).trim().toUpperCase();
-    const sexoPrefix = (sexoNormalizado === 'M' || sexoNormalizado === 'MASCULINO') ? 'H:' : 'M:';
-    
-    const coincidencia = partes.find(p => p.trim().startsWith(sexoPrefix));
-    if (coincidencia) {
-      rangoTarget = coincidencia.replace(sexoPrefix, '').trim();
-    }
-  }
-
-  if (rangoTarget.startsWith('<')) {
-    const max = parseFloat(rangoTarget.replace('<', '').trim());
-    return !isNaN(max) && valNum >= max;
-  }
-
-  if (rangoTarget.startsWith('>')) {
-    const min = parseFloat(rangoTarget.replace('>', '').trim());
-    return !isNaN(min) && valNum <= min;
-  }
-
-  if (rangoTarget.includes('-')) {
-    const [minStr, maxStr] = rangoTarget.split('-');
-    const min = parseFloat(minStr.trim());
-    const max = parseFloat(maxStr.trim());
-    if (!isNaN(min) && !isNaN(max)) {
-      return valNum < min || valNum > max;
-    }
-  }
-
-  return false;
-}
-
 async function compartirInforme() {
   if (!examenActualId) return;
 
@@ -1106,7 +1184,7 @@ async function mostrarInforme(examenId){
             return `
             <tr>
               <td>${r.parametro}</td>
-              <td style="text-align:center" class="${claseResultado}">${r.valor||'-'}${fueraRango ? ' (!)' : ''}</td>
+              <td style="text-align:center" class="${claseResultado}">${r.valor || '-'}${fueraRango ? ' (!)' : ''}</td>
               <td style="text-align:center">${r.unidad}</td>
               <td style="text-align:center;color:#444;">${r.referencia}</td>
             </tr>
@@ -1275,11 +1353,75 @@ async function cargarHistorial() {
 }
 
 async function verExamenModal(examenId){
-  const examen=await db.examenes.get(examenId);
-  const paciente=await db.pacientes.get(examen.paciente_id);
-  const resultados=await db.resultados.where('examen_id').equals(examenId).toArray();
-  const lab=labConfig.nombre||'Biomed Lab';
-  document.getElementById('modalContent').innerHTML=`<div style="text-align:center;border-bottom:2px solid #000;padding-bottom:10px;margin-bottom:16px"><h4 style="margin:0;color:#000">${lab}</h4><p style="margin:4px 0;font-size:12px;color:#000">Código: ${examen.codigo_servicio} | Fecha: ${examen.fecha}</p></div><p style="font-size:13px"><strong>Paciente:</strong> ${paciente?.nombre||'N/A'} (${paciente?.cedula||'N/A'})</p><p style="font-size:13px"><strong>Examen:</strong> ${examenesConfig[examen.tipo_examen]?.nombre||examen.tipo_examen}</p><p style="font-size:13px"><strong>Bioanalista:</strong> ${examen.bioanalista}</p><table style="margin-top:10px;font-size:12px"><thead><tr><th>Parámetro</th><th>Resultado</th><th>Unidad</th><th>Referencia</th></tr></thead><tbody>${resultados.map(r=>`<tr><td>${r.parametro}</td><td style="font-weight:700;text-align:center">${r.valor||'-'}</td><td style="text-align:center">${r.unidad}</td><td style="text-align:center;font-size:11px">${r.referencia}</td></tr>`).join('')}</tbody></table>${examen.observaciones?`<p style="font-size:12px;margin-top:10px"><strong>Obs:</strong> ${examen.observaciones}</p>`:''}`;
+  examenActualId = examenId;
+  const examen = await db.examenes.get(examenId);
+  const paciente = await db.pacientes.get(examen.paciente_id);
+  const resultados = await db.resultados.where('examen_id').equals(examenId).toArray();
+  const lab = labConfig.nombre || 'Biomed Lab';
+  const edadPac = obtenerEdadPaciente(paciente);
+  
+  const html = `
+    <div class="report-container">
+      <div class="report-header">
+        <h2>${lab}</h2>
+        ${labConfig.direccion ? `<p>${labConfig.direccion}</p>` : ''}
+        ${labConfig.telefono ? `<p>Tel: ${labConfig.telefono}</p>` : ''}
+        ${labConfig.rif ? `<p>RIF: ${labConfig.rif}</p>` : ''}
+        <p style="font-weight:bold;margin-top:4px;">INFORME DE RESULTADOS DE LABORATORIO</p>
+      </div>
+      <div class="report-info">
+        <div>
+          <p><strong>Paciente:</strong> ${paciente?.nombre || 'N/A'}</p>
+          <p><strong>C.I.:</strong> ${paciente?.cedula || 'N/A'}</p>
+          <p><strong>Edad:</strong> ${edadPac} | <strong>Sexo:</strong> ${paciente?.sexo || 'N/A'}</p>
+        </div>
+        <div style="text-align:right">
+          <p><strong>Código:</strong> ${examen.codigo_servicio}</p>
+          <p><strong>Fecha:</strong> ${examen.fecha}</p>
+          <p><strong>Examen:</strong> ${examenesConfig[examen.tipo_examen]?.nombre || examen.tipo_examen}</p>
+        </div>
+      </div>
+      <table class="report-table">
+        <thead>
+          <tr>
+            <th>Parámetro</th>
+            <th style="text-align:center">Resultado</th>
+            <th style="text-align:center">Unidad</th>
+            <th style="text-align:center">Referencia</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${resultados.map(r => {
+            const fueraRango = esValorFueraDeRango(r.valor, r.referencia, paciente?.sexo);
+            const claseResultado = fueraRango ? 'out-of-range' : '';
+            return `
+            <tr>
+              <td>${r.parametro}</td>              
+              <td style="text-align:center" class="${claseResultado}">${r.valor || '-'}${fueraRango ? ' (!)' : ''}</td>
+              <td style="text-align:center">${r.unidad}</td>
+              <td style="text-align:center;color:#444;">${r.referencia}</td>
+            </tr>
+          `}).join('')}
+        </tbody>
+      </table>
+      ${examen.observaciones ? `<div class="report-obs"><strong>Observaciones:</strong> ${examen.observaciones}</div>` : ''}
+      <div style="margin-top:20px;display:flex;justify-content:space-between;align-items:flex-end;">
+        <div style="font-size:9px;color:#555;">
+          <p style="margin:0;">Este informe tiene validez médica.</p>
+          <p style="margin:0;">Los valores de referencia pueden variar según el método.</p>
+        </div>
+        <div style="text-align:center">
+          ${firmaBase64 ? `<img src="${firmaBase64}" style="max-height:50px;display:block;margin:0 auto 2px auto;">` : ''}
+          <p style="border-top:1px solid #000;display:inline-block;padding-top:4px;width:160px;margin:0;font-size:11px;">
+            <strong>${examen.bioanalista}</strong><br>
+            <small>Bioanalista</small>
+          </p>
+        </div>
+      </div>
+    </div>
+  `;
+  
+  document.getElementById('modalContent').innerHTML = html;
   document.getElementById('modalOverlay').classList.add('active');
 }
 

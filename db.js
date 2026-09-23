@@ -28,6 +28,23 @@ async function solicitarAlmacenamientoPersistente() {
   }
 }
 
+// Función auxiliar para generar un salt aleatorio de 16 bytes
+function generateSalt() {
+  const array = new Uint8Array(16);
+  window.crypto.getRandomValues(array);
+  return Array.from(array, b => b.toString(16).padStart(2, '0')).join('');
+}
+
+// Función para cifrar la contraseña combinándola con el salt (SHA-256)
+async function hashPasswordWithSalt(password, salt) {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(password + salt);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+// Compatibilidad con código legado si requiere hash simple
 async function hashPassword(password) {
   const encoder = new TextEncoder();
   const data = encoder.encode(password);
@@ -35,7 +52,24 @@ async function hashPassword(password) {
   return Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
-// Helper para parsear rangos y verificar valores alterados (soporta "70-100", "<200", ">40" y por sexo "H:14-18 / M:12-16")
+// Inicialización del usuario admin con Salt
+async function initDefaultUser() {
+  const adminExists = await db.users.get('admin');
+  if (!adminExists) {
+    const salt = generateSalt();
+    const hashedPassword = await hashPasswordWithSalt('admin123', salt);
+    
+    await db.users.put({
+      username: 'admin',
+      password: hashedPassword,
+      salt: salt,
+      role: 'admin'
+    });
+    console.log('Usuario admin creado con Salt exitosamente.');
+  }
+}
+
+// Helper para parsear rangos y verificar valores alterados
 function esValorFueraDeRango(valorStr, rangoStr, sexoPaciente = '') {
   if (valorStr === null || valorStr === undefined || !rangoStr) return false;
   
@@ -44,12 +78,9 @@ function esValorFueraDeRango(valorStr, rangoStr, sexoPaciente = '') {
 
   let rangoTarget = rangoStr.trim();
 
-  // Si el rango viene dividido por sexo (ej: H:14.0-18.0 / M:12.0-16.0)
   if (rangoTarget.includes('/')) {
     const partes = rangoTarget.split('/');
     const sexoNormalizado = String(sexoPaciente).trim().toUpperCase();
-    
-    // Homologado con app.js: 'H' / 'MASCULINO' => 'H:' / 'M' / 'FEMENINO' => 'M:'
     const sexoPrefix = (sexoNormalizado === 'H' || sexoNormalizado === 'MASCULINO') ? 'H:' : 'M:';
     
     const coincidencia = partes.find(p => p.trim().startsWith(sexoPrefix));
@@ -58,19 +89,16 @@ function esValorFueraDeRango(valorStr, rangoStr, sexoPaciente = '') {
     }
   }
 
-  // Evaluar formato "< X"
   if (rangoTarget.startsWith('<')) {
     const max = parseFloat(rangoTarget.replace('<', '').trim());
     return !isNaN(max) && valNum >= max;
   }
 
-  // Evaluar formato "> X"
   if (rangoTarget.startsWith('>')) {
     const min = parseFloat(rangoTarget.replace('>', '').trim());
     return !isNaN(min) && valNum <= min;
   }
 
-  // Evaluar formato "MIN - MAX" (ej: 70 - 100)
   if (rangoTarget.includes('-')) {
     const [minStr, maxStr] = rangoTarget.split('-');
     const min = parseFloat(minStr.trim());
