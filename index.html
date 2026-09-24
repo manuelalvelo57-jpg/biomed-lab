@@ -4,15 +4,14 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-  <!-- Iconos vinculados a la carpeta icons/ -->
   <link rel="icon" type="image/png" sizes="32x32" href="./icons/icon-192.png">
   <link rel="apple-touch-icon" href="./icons/icon-192.png">
 
   <meta name="theme-color" content="#0f3460">
-  <title>Biomed Lab v2.4</title>
+  <title>Biomed Lab</title>
 
   <link rel="manifest" href="./manifest.json">
-  <link rel="stylesheet" href="./styles.css?v=2.4">
+  <link rel="stylesheet" href="./styles.css?v=2.3">
   <script src="https://cdn.jsdelivr.net/npm/dexie@3.2.4/dist/dexie.min.js"></script>
 </head>
 <body>
@@ -20,20 +19,23 @@
 <div id="login-overlay">
   <div class="login-card">
     <h2>Biomed Lab</h2>
-    <p style="text-align:center; color:#64748b; font-size:13px; margin-top:-10px;">Control de Acceso v2.4</p>
+    <p style="text-align:center; color:#64748b; font-size:13px; margin-top:-10px;">Control de Acceso</p>
     <div id="login-error" style="color:var(--danger); font-size:13px; display:none; margin-bottom:10px; text-align:center;"></div>
     <form id="login-form">
       <input type="text" id="login-user" placeholder="Usuario" required autocomplete="username">
       <input type="password" id="login-pass" placeholder="Contraseña" required autocomplete="current-password">
       <button type="submit" class="btn-primary" style="width:100%; margin-top:5px;">Ingresar</button>
     </form>
+    <div style="margin-top: 15px; text-align: center; border-top: 1px solid #e2e8f0; padding-top: 10px;">
+      <button type="button" class="btn-outline btn-sm" onclick="restablecerAdminDefecto()">🔑 Restablecer Administrador (admin/admin123)</button>
+    </div>
   </div>
 </div>
 
 <div class="container">
   <header class="no-print">
     <div>
-      <h1>🧪 Biomed Lab <small style="font-size:12px; font-weight:normal; opacity:0.8;">v2.4</small></h1>
+      <h1>🧪 Biomed Lab</h1>
       <p>Sistema de Gestión de Resultados</p>
     </div>
     <div class="user-badge" id="user-display">
@@ -43,159 +45,164 @@
   </header>
 
   <div class="tabs no-print">
-    <button class="tab active" onclick="showTab(event, 'ingreso')">Ingreso / Examen</button>
-    <button class="tab" onclick="showTab(event, 'historial')">Historial</button>
-    <button class="tab admin-only" onclick="showTab(event, 'config')">Configuración</button>
-    <button class="tab admin-only" onclick="showTab(event, 'usuarios')">Usuarios</button>
-    <button class="tab" onclick="showTab(event, 'perfil')">Mi Cuenta</button>
+    <button class="tab active" onclick="showTab(event, 'registro')">📌 Registro</button>
+    <button class="tab" onclick="showTab(event, 'historial')">📋 Historial</button>
+    <button class="tab" onclick="showTab(event, 'usuarios')">👤 Mi Cuenta / Usuarios</button>
+    <button class="tab" onclick="showTab(event, 'config')">⚙️ Configuración</button>
+    <button class="tab" onclick="showTab(event, 'respaldo')">💾 Respaldo</button>
   </div>
 
-  <!-- Pestaña Ingreso de Datos -->
-  <div id="tab-ingreso" class="tab-content active no-print">
-    <div class="card">
-      <h3>1. Buscar o Registrar Paciente</h3>
-      <div class="form-row">
-        <input type="text" id="buscarCedula" placeholder="Cédula o Nombre..." onkeyup="buscarPaciente()">
-        <button class="btn-primary" onclick="toggleRegistro()">➕ Nuevo Paciente</button>
-      </div>
+  <div id="tab-registro" class="tab-content active">
+    <div class="card no-print">
+      <h2>🔍 Paso 1: Buscar Paciente</h2>
+      <input type="text" id="buscarCedula" placeholder="Escribe cédula o nombre..." oninput="buscarPaciente()">
       <div id="resultadosBusqueda"></div>
+      <div id="pacienteEncontrado" class="patient-found hidden"></div>
+      <button class="btn-outline" onclick="toggleRegistro()">+ Registrar paciente nuevo</button>
+    </div>
 
-      <!-- Formulario para Registrar / Editar Paciente -->
-      <div id="registroPaciente" class="hidden" style="margin-top:15px; border-top:1px solid #e2e8f0; padding-top:15px;">
-        <h4 style="margin-bottom:10px;">Datos del Paciente</h4>
-        <div class="form-grid">
-          <div>
-            <label>
-              <input type="checkbox" id="esMenor" onchange="toggleMenorSinCedula()"> Menor sin Cédula
-            </label>
-            <input type="text" id="cedula" placeholder="Cédula / Documento">
-          </div>
-          <input type="text" id="nombre" placeholder="Nombre Completo *">
-          <div style="display:flex; gap:5px;">
-            <input type="number" id="edad" placeholder="Edad" oninput="actualizarFechaPorEdad()" style="flex:1;">
-            <select id="unidadEdad" style="width:100px;">
+    <div class="card hidden no-print" id="registroPaciente">
+      <h2>📌 Registrar / Editar Paciente</h2>
+      <form id="formPaciente" onsubmit="guardarPaciente(event)">
+        <div class="form-group" style="margin-bottom: 10px;">
+          <label style="cursor: pointer;">
+            <input type="checkbox" id="esMenor" onchange="toggleMenorSinCedula()"> 
+            ¿Es menor de edad sin cédula?
+          </label>
+        </div>
+        <div class="grid-2">
+          <input type="text" id="cedula" placeholder="Cédula / Documento *">
+          <input type="text" id="nombre" placeholder="Nombre completo *">
+        </div>
+        <div class="grid-4" style="margin-top: 10px;">
+          <div style="display: flex; gap: 4px;">
+            <input type="number" id="edad" placeholder="Edad" min="0" max="120" oninput="actualizarFechaPorEdad()" style="flex: 2;">
+            <select id="unidadEdad" style="flex: 1;">
               <option value="años">Años</option>
               <option value="meses">Meses</option>
               <option value="días">Días</option>
             </select>
           </div>
-          <input type="date" id="fechaNac" placeholder="Fecha Nacimiento" onchange="actualizarEdadPorFecha()">
+          <input type="date" id="fechaNac" onchange="actualizarEdadPorFecha()">
           <select id="sexo">
-            <option value="">Seleccione Sexo</option>
-            <option value="Masculino">Masculino</option>
-            <option value="Femenino">Femenino</option>
+            <option value="">Sexo</option>
+            <option value="F">Femenino</option>
+            <option value="M">Masculino</option>
           </select>
           <input type="text" id="telefono" placeholder="Teléfono">
-          <input type="text" id="direccion" placeholder="Dirección">
         </div>
-        <div style="margin-top:10px; text-align:right;">
-          <button id="btnGuardarPaciente" class="btn-primary" onclick="guardarPaciente(event)">💾 Guardar Paciente</button>
+        <input type="text" id="direccion" placeholder="Dirección (opcional)" style="margin-top: 10px;">
+        <div style="margin-top: 12px; display: flex; gap: 8px;">
+          <button type="submit" class="btn-success" id="btnGuardarPaciente">💾 Guardar Paciente</button>
+          <button type="button" class="btn-outline" onclick="limpiarFormularioPaciente()">❌ Cancelar / Limpiar</button>
         </div>
-      </div>
-
-      <div id="pacienteEncontrado" class="hidden" style="margin-top:15px;"></div>
+      </form>
     </div>
 
-    <!-- Sección Carga de Resultados -->
-    <div id="entradaResultados" class="card hidden" style="margin-top:20px;">
-      <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:15px;">
-        <h3 id="pacienteSeleccionado" style="margin:0;">Paciente: -</h3>
-        <span class="badge badge-blue">Código Servicio: <strong id="codigoServicio">-</strong></span>
+    <div class="card hidden no-print" id="entradaResultados">
+      <h2>🧪 Paso 2: Entrada de Resultados</h2>
+      <p id="pacienteSeleccionado" style="font-weight:700;color:var(--primary);font-size:15px;margin-bottom:12px"></p>
+      <div class="orden-box">
+        <label>Código de Servicio / Orden</label>
+        <div class="codigo" id="codigoServicio"></div>
+        <small style="color:#64748b">Generado automáticamente</small>
       </div>
-
-      <div class="form-grid">
-        <select id="tipoExamen" onchange="cargarParametros()">
-          <option value="">Selecciona tipo de examen</option>
-        </select>
-        <input type="text" id="bioanalista" placeholder="Bioanalista Responsable">
+      <div class="grid-2">
+        <select id="tipoExamen" onchange="cargarParametros()"><option value="">Selecciona tipo de examen</option></select>
+        <div>
+          <input type="text" id="bioanalista" placeholder="Nombre del Bioanalista">
+          <small style="color:#64748b;font-size:11px">Puedes fijar este valor por defecto en Configuración.</small>
+        </div>
       </div>
-
-      <div id="parametrosExamen" style="margin-top:15px;"></div>
-
-      <div style="margin-top:15px;">
-        <label>Observaciones:</label>
-        <textarea id="observaciones" rows="2" placeholder="Observaciones o notas adicionales del examen..."></textarea>
-      </div>
-
-      <div style="margin-top:15px; display:flex; gap:10px; flex-wrap:wrap;">
-        <button class="btn-primary" onclick="guardarExamen()">💾 Guardar e Imprimir</button>
-        <button class="btn-secondary" onclick="nuevoExamen()">📄 Limpiar / Nuevo Examen</button>
-      </div>
+      <div id="parametrosExamen"></div>
+      <textarea id="observaciones" rows="2" placeholder="Observaciones (opcional)"></textarea>
+      <button class="btn-success" onclick="guardarExamen()">💾 Guardar Resultados</button>
     </div>
 
-    <!-- Previsualización / Impresión del Informe -->
-    <div id="informeImpresion" class="card hidden" style="margin-top:20px;">
-      <div class="no-print" style="display:flex; gap:10px; margin-bottom:15px; flex-wrap:wrap;">
-        <button class="btn-primary" onclick="window.print()">🖨️ Imprimir Informe</button>
-        <button class="btn-secondary" onclick="compartirInforme()">📱 Compartir (WhatsApp / App)</button>
-        <button class="btn-secondary" onclick="enviarWhatsAppActual()">🟢 Enviar Directo a WhatsApp</button>
-        <button class="btn-secondary" onclick="copiarResumenTexto()">📋 Copiar Texto</button>
-      </div>
+    <div class="card hidden" id="informeImpresion">
+      <h2 class="no-print">📄 Informe de Laboratorio</h2>
       <div id="contenidoInforme"></div>
+      <div class="no-print" style="margin-top:16px;display:flex;gap:10px;flex-wrap:wrap">
+        <button class="btn-warning" onclick="window.print()">🖨️ Imprimir / Guardar PDF</button>
+        <button class="btn-share" onclick="compartirInforme()">🔗 Compartir</button>
+        <button class="btn-whatsapp" onclick="enviarWhatsAppActual()">📲 Enviar por WhatsApp</button>
+        <button class="btn-info" onclick="copiarResumenTexto()">📋 Copiar Resumen</button>
+        <button class="btn-outline" onclick="nuevoExamen()">+ Nuevo Examen</button>
+      </div>
     </div>
   </div>
 
-  <!-- Pestaña Historial -->
-  <div id="tab-historial" class="tab-content no-print">
-    <div id="statsGrid" class="stats-grid"></div>
-
-    <div class="card">
-      <h3>Historial de Exámenes</h3>
-      <div class="form-grid" style="margin-bottom:15px;">
-        <input type="text" id="filtroPaciente" placeholder="Filtrar por paciente o C.I..." onkeyup="cargarHistorial()">
-        <select id="filtroExamen" onchange="cargarHistorial()">
+  <div id="tab-historial" class="tab-content">
+    <div class="card no-print">
+      <h2>📋 Historial de Exámenes</h2>
+      <div class="filters-bar" style="display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px;">
+        <input type="text" id="filtroPaciente" placeholder="Buscar por Paciente o Cédula" oninput="cargarHistorial()" style="flex: 2; min-width: 180px;">
+        
+        <select id="filtroExamen" onchange="cargarHistorial()" style="flex: 1; min-width: 160px;">
           <option value="">Todos los exámenes</option>
         </select>
-        <div style="display:flex; gap:5px;">
-          <input type="number" id="filtroAno" placeholder="Año (YYYY)" oninput="cargarHistorial()">
-          <input type="number" id="filtroMes" placeholder="Mes (MM)" min="1" max="12" oninput="cargarHistorial()">
-          <input type="number" id="filtroDia" placeholder="Día (DD)" min="1" max="31" oninput="cargarHistorial()">
-        </div>
-      </div>
 
-      <div style="overflow-x:auto;">
-        <table>
-          <thead>
-            <tr>
-              <th>Código</th>
-              <th>Paciente</th>
-              <th>Examen</th>
-              <th>Fecha</th>
-              <th>Bioanalista</th>
-              <th>Acción</th>
-            </tr>
-          </thead>
-          <tbody id="tablaHistorial"></tbody>
-        </table>
+        <input type="number" id="filtroDia" placeholder="Día (ej: 05)" min="1" max="31" style="width: 90px;" oninput="cargarHistorial()">
+        <select id="filtroMes" onchange="cargarHistorial()" style="width: 120px;">
+          <option value="">Todo el Mes</option>
+          <option value="01">Enero</option>
+          <option value="02">Febrero</option>
+          <option value="03">Marzo</option>
+          <option value="04">Abril</option>
+          <option value="05">Mayo</option>
+          <option value="06">Junio</option>
+          <option value="07">Julio</option>
+          <option value="08">Agosto</option>
+          <option value="09">Septiembre</option>
+          <option value="10">Octubre</option>
+          <option value="11">Noviembre</option>
+          <option value="12">Diciembre</option>
+        </select>
+        <input type="number" id="filtroAno" placeholder="Año (ej: 2026)" min="2000" max="2100" style="width: 100px;" oninput="cargarHistorial()">
       </div>
+      <div class="stats-grid" id="statsGrid"></div>
+      <table>
+        <thead><tr><th>Código</th><th>Paciente</th><th>Examen</th><th>Fecha</th><th>Bioanalista</th><th>Acción</th></tr></thead>
+        <tbody id="tablaHistorial"></tbody>
+      </table>
     </div>
   </div>
 
-  <!-- Pestaña Configuración (Admin) -->
-  <div id="tab-config" class="tab-content admin-only no-print">
-    <div class="card">
-      <h3>Datos del Laboratorio</h3>
-      <div class="form-grid">
-        <input type="text" id="labNombre" placeholder="Nombre del Laboratorio">
-        <input type="text" id="labBioanalista" placeholder="Bioanalista Principal">
-        <input type="text" id="labDireccion" placeholder="Dirección">
-        <input type="text" id="labTelefono" placeholder="Teléfono">
-        <input type="text" id="labRif" placeholder="RIF / Identificación Fiscal">
-      </div>
-      <div style="margin-top:10px;">
-        <label>Firma Digital (Imagen):</label>
-        <input type="file" accept="image/*" onchange="cargarImagenFirma(this)">
-        <div id="firmaPreview" style="margin-top:5px;"></div>
-      </div>
-      <button class="btn-primary" style="margin-top:15px;" onclick="guardarConfigLab()">💾 Guardar Datos del Laboratorio</button>
+  <div id="tab-usuarios" class="tab-content">
+    <div class="card no-print">
+      <h2>🔑 Cambiar Mi Contraseña / Usuario</h2>
+      <form id="change-pass-form" style="max-width:400px;">
+        <input type="text" id="my-username" placeholder="Nuevo Usuario" required autocomplete="username">
+        <input type="password" id="my-new-pass" placeholder="Nueva Contraseña" required autocomplete="new-password">
+        <button type="submit" class="btn-warning">Actualizar Mis Credenciales</button>
+      </form>
     </div>
 
-    <div class="card" style="margin-top:20px;">
-      <h3>Crear Nuevo Tipo de Examen</h3>
-      <div class="form-row" style="margin-bottom:10px;">
-        <input type="text" id="nuevoExamenNombre" placeholder="Nombre del Examen (ej: Perfil Hepático)">
-        <button class="btn-secondary" onclick="agregarFilaParametro()">➕ Parámetro</button>
-      </div>
+    <div class="card no-print admin-only" style="display:none;">
+      <h2>👤 Creación de Nuevos Usuarios</h2>
+      <form id="create-user-form" style="max-width:400px;">
+        <input type="text" id="new-user-name" placeholder="Nombre de usuario" required autocomplete="username">
+        <input type="password" id="new-user-pass" placeholder="Contraseña" required autocomplete="new-password">
+        <select id="new-user-role">
+          <option value="operador">Operador (Solo registro y consulta)</option>
+          <option value="admin">Administrador (Acceso total)</option>
+        </select>
+        <button type="submit" class="btn-primary">Crear Usuario</button>
+      </form>
+      <h3 style="margin-top:20px;">Usuarios Registrados</h3>
+      <table>
+        <thead><tr><th>Usuario</th><th>Rol</th><th>Acción</th></tr></thead>
+        <tbody id="lista-usuarios-body"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div id="tab-config" class="tab-content">
+    <div class="card no-print">
+      <h2>⚙️ Configuración de Exámenes</h2>
+      <p style="color:#64748b;font-size:13px">Agrega nuevos exámenes a medida que Biomed crece.</p>
+      <div class="section-title">Agregar nuevo examen</div>
+      <input type="text" id="nuevoExamenNombre" placeholder="Nombre del examen">
       <div id="nuevosParametros">
         <div class="np-row">
           <input type="text" placeholder="Parámetro" class="np-nombre">
@@ -203,100 +210,115 @@
           <input type="text" placeholder="Referencia" class="np-ref">
         </div>
       </div>
-      <button class="btn-primary" style="margin-top:15px;" onclick="guardarNuevoExamen()">💾 Guardar Examen Personalizado</button>
+      <button class="btn-outline btn-sm" onclick="agregarFilaParametro()">+ Agregar parámetro</button>
+      <br><br>
+      <button class="btn-success" onclick="guardarNuevoExamen()">💾 Guardar nuevo examen</button>
+      
+      <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #e2e8f0;">
+        <button class="btn-warning btn-sm" onclick="sincronizarExamenesBase()">
+          🔄 Actualizar catálogo de exámenes predeterminados
+        </button>
+        <small style="display:block; color:#64748b; margin-top:4px;">
+          Sincroniza y recarga todos los perfiles y combos predeterminados sin borrar registros existentes.
+        </small>
+      </div>
+
+      <div class="section-title">Exámenes configurados (<span id="totalExamenes">0</span>)</div>
+      <div id="listaExamenesConfig"></div>
     </div>
 
-    <div class="card" style="margin-top:20px;">
-      <div style="display:flex; justify-content:space-between; align-items:center;">
-        <h3>Catálogo de Exámenes (<span id="totalExamenes">0</span>)</h3>
-        <button class="btn-secondary btn-sm" onclick="sincronizarExamenesBase()">🔄 Sincronizar Exámenes Predeterminados</button>
+    <div class="card no-print">
+      <h2>🏥 Datos del Laboratorio y Personal</h2>
+      <div class="grid-2">
+        <input type="text" id="labNombre" placeholder="Nombre del laboratorio">
+        <input type="text" id="labBioanalista" placeholder="Bioanalista por defecto">
       </div>
-      <div id="listaExamenesConfig" style="margin-top:10px;"></div>
+      <div class="grid-2">
+        <input type="text" id="labDireccion" placeholder="Dirección">
+        <input type="text" id="labTelefono" placeholder="Teléfono">
+      </div>
+      <div class="grid-2">
+        <input type="text" id="labRif" placeholder="RIF / NIT">
+        <div>
+          <label style="font-size:12px;color:#64748b">Firma / Sello Digitalizado</label>
+          <input type="file" id="labFirmaInput" accept="image/*" onchange="cargarImagenFirma(this)">
+        </div>
+      </div>
+      <div id="firmaPreview" style="margin-top:8px"></div>
+      <button class="btn-primary" onclick="guardarConfigLab()">💾 Guardar Configuración</button>
     </div>
-
-    <div class="card" style="margin-top:20px;">
-      <h3>Respaldo y Mantenimiento</h3>
-      <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:10px;">
-        <button id="btnExportarDirecto" class="btn-primary">💾 Exportar Copia JSON</button>
-        <button id="btnImportarDirecto" class="btn-secondary">📂 Importar Copia JSON</button>
-        <button class="btn-danger" onclick="limpiarDB()">🗑️ Limpiar Base de Datos</button>
-      </div>
-      <div id="exportMsg" style="margin-top:10px;"></div>
-      <div id="importMsg" style="margin-top:10px;"></div>
+	
+    <div style="margin-top: 20px; padding: 12px; background: #fff1f2; border: 1px solid #fecdd3; border-radius: 8px;">
+      <h4 style="margin:0 0 6px 0; color:#9f1239;">🔄 Limpieza de Memoria Caché</h4>
+      <p style="margin:0 0 10px 0; font-size:12px; color:#4c0519;">
+        Si notas que los cambios de versión no aparecen en esta computadora, forzar la actualización descargará la versión más reciente sin borrar los datos guardados.
+      </p>
+      <button class="btn-danger btn-sm" onclick="fuerzaActualizarPWA()">
+        ⚡ Limpiar Caché y Recargar
+      </button>
     </div>
   </div>
 
-  <!-- Pestaña Usuarios (Admin) -->
-  <div id="tab-usuarios" class="tab-content admin-only no-print">
-    <div class="card">
-      <h3>Gestión de Usuarios</h3>
-      <form id="create-user-form" style="margin-bottom:20px;">
-        <div class="form-grid">
-          <input type="text" id="new-user-name" placeholder="Usuario *" required>
-          <input type="password" id="new-user-pass" placeholder="Contraseña *" required>
-          <select id="new-user-role">
-            <option value="usuario">Usuario Estándar</option>
-            <option value="admin">Administrador</option>
-          </select>
-        </div>
-        <button type="submit" class="btn-primary" style="margin-top:10px;">➕ Crear Usuario</button>
-      </form>
-
-      <div style="overflow-x:auto;">
-        <table>
-          <thead>
-            <tr>
-              <th>Usuario</th>
-              <th>Rol</th>
-              <th>Acción</th>
-            </tr>
-          </thead>
-          <tbody id="lista-usuarios-body"></tbody>
-        </table>
-      </div>
+  <div id="tab-respaldo" class="tab-content">
+    <div class="card no-print">
+      <h2>💾 Exportar Base de Datos</h2>
+      <p style="color:#64748b;font-size:13px">Genera un archivo JSON con todos los datos. Guárdalo en USB o nube.</p>
+      <button class="btn-info" onclick="exportarDB()">📤 Exportar todo (JSON)</button>
+      <button class="btn-primary" id="btnExportarDirecto" style="margin-left: 8px;">💾 Guardar directamente en Disco Duro</button>
+      <div id="exportMsg" style="margin-top:10px"></div>
     </div>
-  </div>
-
-  <!-- Pestaña Mi Cuenta -->
-  <div id="tab-perfil" class="tab-content no-print">
-    <div class="card">
-      <h3>Cambiar Mi Contraseña</h3>
-      <form id="change-pass-form">
-        <div class="form-grid">
-          <input type="text" id="my-username" placeholder="Nombre de usuario" required>
-          <input type="password" id="my-new-pass" placeholder="Nueva contraseña" required>
+    
+    <div class="card no-print">
+      <h2>📥 Importar Base de Datos</h2>
+      <p style="color:#64748b;font-size:13px">Restaura datos desde un archivo de respaldo. <strong style="color:var(--danger)">¡Reemplazará los datos actuales!</strong></p>
+      <div class="file-input-wrapper" style="display: flex; gap: 8px;">
+        <div>
+          <button class="btn-warning">📁 Seleccionar archivo JSON</button>
+          <input type="file" id="importFile" accept=".json" onchange="importarDB(this)">
         </div>
-        <button type="submit" class="btn-primary" style="margin-top:15px;">🔄 Actualizar Credenciales</button>
-      </form>
+        <button class="btn-warning" id="btnImportarDirecto">📂 Cargar desde Disco Duro</button>
+      </div>
+      <div id="importMsg" style="margin-top:10px"></div>
     </div>
 
-    <div class="card" style="margin-top:20px;">
-      <h3>Opciones del Sistema</h3>
-      <p style="font-size:13px; color:#64748b;">Si experimentas problemas con la aplicación o deseas forzar la descarga de la última versión instalada en la caché:</p>
-      <div style="display:flex; gap:10px; flex-wrap:wrap;">
-        <button class="btn-secondary" onclick="fuerzaActualizarPWA()">🔄 Forzar Actualización PWA</button>
-        <button class="btn-danger" onclick="restablecerAdminDefecto()">⚠️ Restablecer Admin por Defecto</button>
-      </div>
+    <div class="card no-print">
+      <h2>🗑️ Limpiar Datos</h2>
+      <p style="color:#64748b;font-size:13px">Elimina todos los datos. <strong style="color:var(--danger)">¡No se puede deshacer!</strong></p>
+      <button class="btn-danger" onclick="limpiarDB()">⚠️ Borrar TODA la base de datos</button>
     </div>
   </div>
 </div>
 
-<!-- Modal para Ver Examen -->
-<div id="modalOverlay" class="modal-overlay no-print" onclick="if(event.target===this)cerrarModal()">
-  <div class="modal-card">
-    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
-      <h3 style="margin:0;">Vista Previa de Informe</h3>
-      <button class="btn-danger btn-sm" onclick="cerrarModal()">✖ Cerrar</button>
-    </div>
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal print-modal">
+    <span class="close-modal no-print" onclick="cerrarModal()">&times;</span>
+    <h3 class="no-print" style="margin-bottom:12px;">📄 Vista de Impresión del Informe</h3>
+    
     <div id="modalContent"></div>
-    <div style="margin-top:15px; text-align:right; display:flex; gap:10px; justify-content:flex-end; flex-wrap:wrap;">
-      <button class="btn-primary btn-sm" onclick="window.print()">🖨️ Imprimir</button>
-      <button class="btn-secondary btn-sm" onclick="enviarWhatsAppActual()">🟢 WhatsApp</button>
+
+    <div class="no-print" style="margin-top:16px; display:flex; gap:8px; flex-wrap:wrap; justify-content:flex-end;">
+      <button class="btn-warning" onclick="window.print()">🖨️ Imprimir / PDF</button>
+      <button class="btn-share" onclick="compartirInforme()">🔗 Compartir</button>
+      <button class="btn-whatsapp" onclick="enviarWhatsAppActual()">📲 Enviar por WhatsApp</button>
+      <button class="btn-outline" onclick="cerrarModal()">Cerrar</button>
     </div>
   </div>
 </div>
 
 <script src="./db.js?v=2.4"></script>
 <script src="./app.js?v=2.4"></script>
+<script>
+function logout() {
+  cerrarSesion();
+}
+
+function cerrarSesion() {
+  sessionStorage.clear();
+  document.body.innerHTML = '<div style="text-align:center; padding:50px;">Cerrando sesión...</div>';
+  setTimeout(() => {
+    window.location.reload();
+  }, 300);
+}
+</script>
 </body>
 </html>
