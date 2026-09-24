@@ -7,19 +7,19 @@ let firmaBase64 = '';
 let pacienteEditandoId = null;
 
 const parametrosHematologiaBase = [
+  {param:'Eritrocitos',unidad:'x10⁶/µL',ref:'4.0-5.5'},
   {param:'Hemoglobina',unidad:'g/dL',ref:'H:14.0-18.0 / M:12.0-16.0'},
   {param:'Hematocrito',unidad:'%',ref:'H:42-52 / M:36-46'},
-  {param:'Eritrocitos',unidad:'x10⁶/µL',ref:'4.0-5.5'},
+  {param:'VCM',unidad:'fL',ref:'80-100'},
+  {param:'HCM',unidad:'pg',ref:'27-33'},
+  {param:'CHCM',unidad:'g/dL',ref:'32-36'},
   {param:'Leucocitos',unidad:'x10³/µL',ref:'4.5-11.0'},
-  {param:'Plaquetas',unidad:'x10³/µL',ref:'150-450'},
   {param:'Neutrófilos',unidad:'%',ref:'40-70'},
   {param:'Linfocitos',unidad:'%',ref:'20-40'},
   {param:'Monocitos',unidad:'%',ref:'2-8'},
   {param:'Eosinófilos',unidad:'%',ref:'1-4'},
   {param:'Basófilos',unidad:'%',ref:'0-1'},
-  {param:'VCM',unidad:'fL',ref:'80-100'},
-  {param:'HCM',unidad:'pg',ref:'27-33'},
-  {param:'CHCM',unidad:'g/dL',ref:'32-36'}
+  {param:'Plaquetas',unidad:'x10³/µL',ref:'150-450'}
 ];
 
 const examenesDefault = {
@@ -65,7 +65,6 @@ const examenesDefault = {
   perfil_20:{
     nombre:'Perfil 20',
     parametros:[
-      ...parametrosHematologiaBase,
       {param:'TP (Tiempo Protrombina)',unidad:'seg',ref:'11-14'},
       {param:'TTPa',unidad:'seg',ref:'25-35'},
       {param:'Glucosa',unidad:'mg/dL',ref:'70-100'},
@@ -383,12 +382,13 @@ const examenesDefault = {
   perfil_prenatal:{
     nombre:'Perfil Prenatal',
     parametros:[
-      ...parametrosHematologiaBase,
       {param:'TP (Tiempo Protrombina)',unidad:'seg',ref:'11-14'},
       {param:'TTPa',unidad:'seg',ref:'25-35'},
       {param:'Glucosa',unidad:'mg/dL',ref:'70-92'},
       {param:'Urea',unidad:'mg/dL',ref:'10-40'},
       {param:'Creatinina',unidad:'mg/dL',ref:'0.4-0.8'},
+      {param:'TGO/AST',unidad:'U/L',ref:'0-40'},
+      {param:'TGP/ALT',unidad:'U/L',ref:'0-41'},
       {param:'VIH 1/2',unidad:'-',ref:'No Reactivo'},
       {param:'VDRL',unidad:'-',ref:'No Reactivo'},
       {param:'Toxoplasma IgG/IgM',unidad:'-',ref:'Negativo'},
@@ -397,23 +397,12 @@ const examenesDefault = {
       {param:'Hepatitis C (Anti-HCV)',unidad:'-',ref:'Negativo'},
       {param:'Grupo ABO',unidad:'-',ref:'A / B / AB / O'},
       {param:'Factor Rh',unidad:'-',ref:'Positivo / Negativo'},
-      {param:'Orina: Aspecto',unidad:'-',ref:'Límpido'},
-      {param:'Orina: Color',unidad:'-',ref:'Amarillo'},
-      {param:'Orina: pH',unidad:'-',ref:'5.0-7.0'},
-      {param:'Orina: Densidad',unidad:'-',ref:'1.003-1.030'},
-      {param:'Orina: Proteínas',unidad:'-',ref:'Negativo'},
-      {param:'Orina: Glucosa',unidad:'-',ref:'Negativo'},
-      {param:'Orina: Nitritos',unidad:'-',ref:'Negativo'},
-      {param:'Orina: Leucocitos (campo)',unidad:'x campo',ref:'0-5'},
-      {param:'Orina: Eritrocitos (campo)',unidad:'x campo',ref:'0-3'},
-      {param:'Orina: Células Epiteliales',unidad:'x campo',ref:'0-5'},
-      {param:'Orina: Bacterias',unidad:'-',ref:'Escasas'}
+      {param:'Orina',unidad:'-',ref:'Ver examen orina'}
     ]
   },
   perfil_preoperatorio:{
     nombre:'Perfil Preoperatorio',
     parametros:[
-      ...parametrosHematologiaBase,
       {param:'TP (Tiempo Protrombina)',unidad:'seg',ref:'11-14'},
       {param:'TTPa',unidad:'seg',ref:'25-35'},
       {param:'Glucosa',unidad:'mg/dL',ref:'70-100'},
@@ -425,13 +414,13 @@ const examenesDefault = {
       {param:'VIH 1/2',unidad:'-',ref:'No Reactivo'},
       {param:'VDRL',unidad:'-',ref:'No Reactivo'},
       {param:'Grupo ABO',unidad:'-',ref:'A / B / AB / O'},
-      {param:'Factor Rh',unidad:'-',ref:'Positivo / Negativo'}
+      {param:'Factor Rh',unidad:'-',ref:'Positivo / Negativo'},
+      {param:'Orina',unidad:'-',ref:'Ver examen orina'}
     ]
   },
   perfil_preeclamptico:{
     nombre:'Perfil Preeclámptico',
     parametros:[
-      ...parametrosHematologiaBase,
       {param:'TP (Tiempo Protrombina)',unidad:'seg',ref:'11-14'},
       {param:'TTPa',unidad:'seg',ref:'25-35'},
       {param:'Glucosa',unidad:'mg/dL',ref:'70-92'},
@@ -1179,7 +1168,7 @@ async function mostrarInforme(examenId){
         </thead>
         <tbody>
           ${resultados.map(r=>{
-            const fueraRango = esValorFueraDeRango(r.valor, r.referencia, paciente?.sexo);
+            const fueraRango = typeof esValorFueraDeRango === 'function' ? esValorFueraDeRango(r.valor, r.referencia, paciente?.sexo) : false;
             const claseResultado = fueraRango ? 'out-of-range' : '';
             return `
             <tr>
@@ -1392,7 +1381,7 @@ async function verExamenModal(examenId){
         </thead>
         <tbody>
           ${resultados.map(r => {
-            const fueraRango = esValorFueraDeRango(r.valor, r.referencia, paciente?.sexo);
+            const fueraRango = typeof esValorFueraDeRango === 'function' ? esValorFueraDeRango(r.valor, r.referencia, paciente?.sexo) : false;
             const claseResultado = fueraRango ? 'out-of-range' : '';
             return `
             <tr>

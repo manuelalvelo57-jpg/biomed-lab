@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
+  <!-- Iconos vinculados a la carpeta icons/ -->
   <link rel="icon" type="image/png" sizes="32x32" href="./icons/icon-192.png">
   <link rel="apple-touch-icon" href="./icons/icon-192.png">
 
@@ -11,7 +12,7 @@
   <title>Biomed Lab</title>
 
   <link rel="manifest" href="./manifest.json">
-  <link rel="stylesheet" href="./styles.css?v=2.3">
+  <link rel="stylesheet" href="./styles.css?v=2.2">
   <script src="https://cdn.jsdelivr.net/npm/dexie@3.2.4/dist/dexie.min.js"></script>
 </head>
 <body>
@@ -26,9 +27,6 @@
       <input type="password" id="login-pass" placeholder="Contraseña" required autocomplete="current-password">
       <button type="submit" class="btn-primary" style="width:100%; margin-top:5px;">Ingresar</button>
     </form>
-    <div style="margin-top: 15px; text-align: center; border-top: 1px solid #e2e8f0; padding-top: 10px;">
-      <button type="button" class="btn-outline btn-sm" onclick="restablecerAdminDefecto()">🔑 Restablecer Administrador (admin/admin123)</button>
-    </div>
   </div>
 </div>
 
@@ -172,8 +170,8 @@
     <div class="card no-print">
       <h2>🔑 Cambiar Mi Contraseña / Usuario</h2>
       <form id="change-pass-form" style="max-width:400px;">
-        <input type="text" id="my-username" placeholder="Nuevo Usuario" required autocomplete="username">
-        <input type="password" id="my-new-pass" placeholder="Nueva Contraseña" required autocomplete="new-password">
+        <input type="text" id="my-username" placeholder="Nuevo Usuario" required>
+        <input type="password" id="my-new-pass" placeholder="Nueva Contraseña" required>
         <button type="submit" class="btn-warning">Actualizar Mis Credenciales</button>
       </form>
     </div>
@@ -181,8 +179,8 @@
     <div class="card no-print admin-only" style="display:none;">
       <h2>👤 Creación de Nuevos Usuarios</h2>
       <form id="create-user-form" style="max-width:400px;">
-        <input type="text" id="new-user-name" placeholder="Nombre de usuario" required autocomplete="username">
-        <input type="password" id="new-user-pass" placeholder="Contraseña" required autocomplete="new-password">
+        <input type="text" id="new-user-name" placeholder="Nombre de usuario" required>
+        <input type="password" id="new-user-pass" placeholder="Contraseña" required>
         <select id="new-user-role">
           <option value="operador">Operador (Solo registro y consulta)</option>
           <option value="admin">Administrador (Acceso total)</option>
@@ -299,22 +297,62 @@
     <div class="no-print" style="margin-top:16px; display:flex; gap:8px; flex-wrap:wrap; justify-content:flex-end;">
       <button class="btn-warning" onclick="window.print()">🖨️ Imprimir / PDF</button>
       <button class="btn-share" onclick="compartirInforme()">🔗 Compartir</button>
-      <button class="btn-whatsapp" onclick="enviarWhatsAppActual()">📲 Enviar por WhatsApp</button>
+      <button class="btn-whatsapp" onclick="enviarWhatsAppActual()">📲 WhatsApp</button>
       <button class="btn-outline" onclick="cerrarModal()">Cerrar</button>
     </div>
   </div>
 </div>
 
-<script src="./db.js?v=2.3"></script>
-<script src="./app.js?v=2.3"></script>
+<script src="./db.js?v=2.2"></script>
+<script src="./app.js?v=2.2"></script>
 <script>
 function logout() {
   cerrarSesion();
 }
 
+async function guardarPacienteModal(datosPaciente) {
+  const { id, cedula, nombre, sexo, fechaNacimiento } = datosPaciente;
+
+  if (!cedula || !nombre) {
+    throw new Error('La cédula y el nombre son obligatorios.');
+  }
+
+  const pacienteExistente = await db.pacientes.where('cedula').equals(cedula).first();
+  if (pacienteExistente && pacienteExistente.id !== id) {
+    throw new Error('Ya existe un paciente registrado con esta cédula.');
+  }
+
+  if (id) {
+    await db.pacientes.update(id, { cedula, nombre, sexo, fechaNacimiento });
+    return id;
+  } else {
+    return await db.pacientes.add({
+      cedula,
+      nombre,
+      sexo,
+      fechaNacimiento,
+      fechaRegistro: new Date().toISOString()
+    });
+  }
+}
+
+async function cargarHistorialFechas(fechaInicio, fechaFin) {
+  const inicioISO = new Date(fechaInicio + 'T00:00:00.000Z').toISOString();
+  const finISO = new Date(fechaFin + 'T23:59:59.999Z').toISOString();
+
+  return await db.ordenes
+    .where('fecha')
+    .between(inicioISO, finISO, true, true)
+    .reverse()
+    .toArray();
+}
+
 function cerrarSesion() {
+  localStorage.removeItem('userToken');
   sessionStorage.clear();
+
   document.body.innerHTML = '<div style="text-align:center; padding:50px;">Cerrando sesión...</div>';
+  
   setTimeout(() => {
     window.location.reload();
   }, 300);
