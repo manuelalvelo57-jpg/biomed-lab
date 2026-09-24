@@ -484,6 +484,22 @@ async function restablecerAdminDefecto() {
 async function init(){
   try {
     await solicitarAlmacenamientoPersistente();
+	// Definición de la función para solicitar almacenamiento persistente en IndexedDB / Browser Storage
+async function solicitarAlmacenamientoPersistente() {
+  if (navigator.storage && navigator.storage.persist) {
+    try {
+      const isPersisted = await navigator.storage.persist();
+      console.log(`Almacenamiento persistente activado: ${isPersisted}`);
+      return isPersisted;
+    } catch (error) {
+      console.error("Error al solicitar almacenamiento persistente:", error);
+      return false;
+    }
+  } else {
+    console.warn("La API de almacenamiento persistente no está disponible en este navegador.");
+    return false;
+  }
+}
     await initDefaultUser();
 
     const saved = await db.config.get('examenes');
@@ -1530,7 +1546,7 @@ async function exportarDB(){
     config:await db.config.toArray(),
     users:await db.users.toArray(),
     exportado:new Date().toISOString(),
-    version:'BiomedLab-v2'
+    version:'BiomedLab-v2.4'
   };
   const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
   const url=URL.createObjectURL(blob);
@@ -1581,7 +1597,7 @@ async function guardarRespaldoEnDisco() {
       config: await db.config.toArray(),
       users: await db.users.toArray(),
       exportado: new Date().toISOString(),
-      version: 'BiomedLab-v2'
+      version: 'BiomedLab-v2.4'
     };
 
     const opciones = {
